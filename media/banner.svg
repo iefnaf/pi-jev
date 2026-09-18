@@ -1,62 +1,198 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" width="1000" height="300" role="img" aria-label="pi-jev: one Jev request turns a pi transcript into compaction and routing decisions">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="banner-title banner-desc">
+  <title id="banner-title">pi-jev: typed judgments become actions</title>
+  <desc id="banner-desc">Two examples of the same pipeline, triggered independently by pi events. For compaction, Jev returns five keep scores; a 0.5 threshold selects the first and last tool calls, preserving their text verbatim. For routing, a difficulty level of 0.3 selects the cheap model from three branches. Each example illustrates a typed Jev request; large compactions may be batched. The animation plays once and ends in a complete, readable diagram.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0a0f1e"/>
-      <stop offset="1" stop-color="#141b36"/>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#293341" stroke-width="0.7"/>
+    </pattern>
+    <linearGradient id="engine" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#142033"/><stop offset="1" stop-color="#111820"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#a78bfa"/>
-      <stop offset="0.5" stop-color="#22d3ee"/>
-      <stop offset="1" stop-color="#34d399"/>
+    <linearGradient id="engine-edge" x1="0" x2="1">
+      <stop stop-color="#58a6ff" stop-opacity="0.05"/><stop offset="0.5" stop-color="#58a6ff" stop-opacity="0.8"/><stop offset="1" stop-color="#58a6ff" stop-opacity="0.05"/>
     </linearGradient>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="7" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    <clipPath id="gauge-clip"><rect x="416" y="319" width="304" height="14" rx="7"/></clipPath>
     <style>
-      .t { font-family: ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif; }
-      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-      .panel { fill: #ffffff; fill-opacity: 0.035; stroke: #ffffff; stroke-opacity: 0.12; }
-      .lbl { fill: #93a4c8; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; }
-      .row { fill: #6f81a8; font-size: 14px; }
-      .beam { stroke: url(#accent); stroke-width: 2; fill: none; stroke-linecap: round; }
-      .dot { fill: #22d3ee; }
+      text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .heading { fill:#a5b3c4; font-size:14px; letter-spacing:1.6px; }
+      .step { fill:#64758b; font-size:12px; }
+      .label { fill:#a5b3c4; font-size:14px; }
+      .question { fill:#d5e4f5; font-size:14px; }
+      .number { fill:#79b8ff; font-size:13px; }
+      .reveal { animation:reveal .5s ease-out both; animation-delay:var(--at,0s); }
+      .bar { transform-box:fill-box; transform-origin:center bottom; animation:grow .55s cubic-bezier(.2,.7,.2,1) both; animation-delay:var(--at,1.4s); }
+      .keep { fill:#47c975; animation:keep-color .35s ease both; animation-delay:2.25s; }
+      .drop { fill:#506074; animation:drop-color .35s ease both; animation-delay:2.25s; }
+      .pointer { animation:pointer .55s cubic-bezier(.2,.7,.2,1) both; animation-delay:3.1s; }
+      .chosen { stroke-dasharray:170; animation:choose .65s ease-out both; animation-delay:3.8s; }
+      .packet { opacity:0; animation:packet .6s linear both; animation-delay:var(--at,1s); }
+      @keyframes reveal { from { opacity:0; } to { opacity:1; } }
+      @keyframes grow { from { transform:scaleY(0); } to { transform:scaleY(1); } }
+      @keyframes keep-color { from { fill:#79a6d5; } to { fill:#47c975; } }
+      @keyframes drop-color { from { fill:#79a6d5; } to { fill:#506074; } }
+      @keyframes pointer { from { transform:translateX(140px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+      @keyframes choose { from { stroke-dashoffset:170; opacity:0; } to { stroke-dashoffset:0; opacity:1; } }
+      @keyframes packet { 0% { transform:translateX(0); opacity:0; } 20% { opacity:1; } 80% { opacity:1; } 100% { transform:translateX(48px); opacity:0; } }
+      @media (prefers-reduced-motion:reduce) {
+        .reveal,.bar,.keep,.drop,.pointer,.chosen { animation:none; }
+        .packet { display:none; }
+      }
     </style>
   </defs>
 
-  <rect width="1000" height="300" rx="20" fill="url(#bg)"/>
-  <rect x="1" y="1" width="998" height="298" rx="19" fill="none" stroke="#ffffff" stroke-opacity="0.07"/>
+  <rect width="1200" height="440" rx="16" fill="#0d1117"/>
+  <rect x=".5" y=".5" width="1199" height="439" rx="15.5" fill="url(#grid)" fill-opacity=".26" stroke="#28313c" stroke-opacity=".65"/>
 
-  <text x="56" y="96" class="t" font-size="58" font-weight="700" fill="url(#accent)" filter="url(#glow)">pi-jev</text>
-  <text x="58" y="130" class="t" font-size="17" fill="#9fb0d4">Jev-powered compaction &amp; routing for pi — typed judgments where an LLM call would be overkill</text>
-
-  <!-- panels -->
-  <g>
-    <rect class="panel" x="56" y="168" width="236" height="98" rx="12"/>
-    <text x="76" y="194" class="t lbl">pi transcript</text>
-    <text x="76" y="220" class="t row">32 messages</text>
-    <text x="76" y="242" class="t row">15 tool calls · 39,379 chars</text>
-
-    <rect class="panel" x="382" y="168" width="236" height="98" rx="12"/>
-    <text x="402" y="194" class="t lbl">Jev System One</text>
-    <text x="402" y="220" class="t row">1 request · 757 ms</text>
-    <text x="402" y="242" class="t row">652 output tokens</text>
-
-    <rect class="panel" x="708" y="168" width="236" height="98" rx="12"/>
-    <text x="728" y="194" class="t lbl">decisions</text>
-    <text x="728" y="220" class="t row">keep 3 · drop 12</text>
-    <text x="728" y="242" class="t m">cheap ⇄ strong</text>
+  <!-- A shared three-stage structure, with one illustrated event in each row. -->
+  <g class="reveal" style="--at:.08s">
+    <text class="step" x="44" y="46">01</text><text class="heading" x="74" y="46">PI EVENT</text>
+    <text class="step" x="382" y="46" fill="#79b8ff">02</text><text class="heading" x="412" y="46" style="fill:#bdd9fa">TYPED JEV REQUEST</text>
+    <text class="step" x="840" y="46">03</text><text class="heading" x="870" y="46">ACTION</text>
+  </g>
+  <rect x="44" y="72" width="288" height="324" rx="14" fill="#131920" stroke="#2c3540"/>
+  <rect x="382" y="72" width="408" height="324" rx="14" fill="url(#engine)" stroke="#395779"/>
+  <path d="M398 72H774" stroke="url(#engine-edge)" stroke-width="2"/>
+  <rect x="840" y="72" width="316" height="324" rx="14" fill="#131920" stroke="#2c3540"/>
+  <path d="M64 236H312M402 236H770M860 236H1136" stroke="#2c3540"/>
+  <g fill="none" stroke="#566578" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M340 171H373M369 168L373 171L369 174M798 171H831M827 168L831 171L827 174M340 326H373M369 323L373 326L369 329M798 326H831M827 323L831 326L827 329"/>
+  </g>
+  <g fill="#79b8ff">
+    <circle class="packet" style="--at:1s" cx="338" cy="171" r="2.5"/>
+    <circle class="packet" style="--at:2.6s" cx="338" cy="326" r="2.5"/>
+    <circle class="packet" style="--at:2.65s" cx="794" cy="171" r="2.5"/>
+    <circle class="packet" style="--at:3.55s" cx="794" cy="326" r="2.5"/>
   </g>
 
-  <!-- beams -->
-  <path id="b1" class="beam" d="M292 217 H382" stroke-dasharray="2 8"/>
-  <path id="b2" class="beam" d="M618 217 H708" stroke-dasharray="2 8"/>
-  <circle class="dot" r="3.4" filter="url(#glow)">
-    <animateMotion dur="2.6s" repeatCount="indefinite" path="M292 217 H382"/>
-  </circle>
-  <circle class="dot" r="3.4" filter="url(#glow)">
-    <animateMotion dur="2.6s" begin="1.3s" repeatCount="indefinite" path="M618 217 H708"/>
-  </circle>
-  <polygon class="dot" points="382,217 374,212 374,222" opacity="0.85"/>
-  <polygon class="dot" points="708,217 700,212 700,222" opacity="0.85"/>
+  <!-- Compaction: the input and output share the same five row shapes. -->
+  <text class="label reveal" style="--at:.2s" x="66" y="105">compaction</text>
+
+  <g class="reveal" style="--at:0.35s">
+    <rect x="66" y="129" width="10" height="10" rx="2" fill="#1f2b39" stroke="#5c7189"/>
+    <path d="M69 134H73" stroke="#8395aa" stroke-width="1.3"/>
+    <rect x="88" y="131" width="146" height="6" rx="3" fill="#64758a"/>
+  </g>
+  <g class="reveal" style="--at:0.45s">
+    <rect x="66" y="147" width="10" height="10" rx="2" fill="#1f2b39" stroke="#5c7189"/>
+    <path d="M69 152H73" stroke="#8395aa" stroke-width="1.3"/>
+    <rect x="88" y="149" width="198" height="6" rx="3" fill="#64758a"/>
+  </g>
+  <g class="reveal" style="--at:0.55s">
+    <rect x="66" y="165" width="10" height="10" rx="2" fill="#1f2b39" stroke="#5c7189"/>
+    <path d="M69 170H73" stroke="#8395aa" stroke-width="1.3"/>
+    <rect x="88" y="167" width="126" height="6" rx="3" fill="#64758a"/>
+  </g>
+  <g class="reveal" style="--at:0.65s">
+    <rect x="66" y="183" width="10" height="10" rx="2" fill="#1f2b39" stroke="#5c7189"/>
+    <path d="M69 188H73" stroke="#8395aa" stroke-width="1.3"/>
+    <rect x="88" y="185" width="174" height="6" rx="3" fill="#64758a"/>
+  </g>
+  <g class="reveal" style="--at:0.75s">
+    <rect x="66" y="201" width="10" height="10" rx="2" fill="#1f2b39" stroke="#5c7189"/>
+    <path d="M69 206H73" stroke="#8395aa" stroke-width="1.3"/>
+    <rect x="88" y="203" width="158" height="6" rx="3" fill="#64758a"/>
+  </g>
+
+  <g class="reveal" style="--at:1.15s">
+    <rect x="412" y="91" width="84" height="26" rx="7" fill="#0e1621" stroke="#334963"/>
+    <text class="question" x="427" y="109">keep?</text>
+  </g>
+  <path class="reveal" style="--at:1.35s" d="M416 210H710" stroke="#3b4b60"/>
+
+  <g class="bar" style="--at:1.40s"><rect class="keep" x="432" y="152" width="32" height="58" rx="4"/></g>
+  <g class="bar" style="--at:1.49s"><rect class="drop" x="490" y="201" width="32" height="9" rx="4"/></g>
+  <g class="bar" style="--at:1.58s"><rect class="drop" x="548" y="200" width="32" height="10" rx="4"/></g>
+  <g class="bar" style="--at:1.67s"><rect class="drop" x="606" y="186" width="32" height="24" rx="4"/></g>
+  <g class="bar" style="--at:1.76s"><rect class="keep" x="664" y="150" width="32" height="60" rx="4"/></g>
+
+  <g class="reveal" style="--at:2.25s">
+    <path d="M416 172.5H710" fill="none" stroke="#79b8ff" stroke-width="1.5" stroke-dasharray="4 5"/>
+    <text class="number" x="723" y="177">0.5</text>
+  </g>
+  <text class="label reveal" style="--at:2.9s" x="862" y="105">verbatim</text>
+
+  <g class="reveal" style="--at:3.00s">
+    <g opacity="1">
+      <rect x="862" y="129" width="10" height="10" rx="2" fill="#47c975" stroke="#47c975"/>
+      <rect x="884" y="131" width="146" height="6" rx="3" fill="#85d9a3"/>
+
+      <path d="M864 134L866 136L870 132" fill="none" stroke="#0d3420" stroke-width="1.1"/>
+    </g>
+  </g>
+  <g class="reveal" style="--at:3.08s">
+    <g opacity="0.35">
+      <rect x="862" y="147" width="10" height="10" rx="2" fill="#19212b" stroke="#5b6777"/>
+      <rect x="884" y="149" width="198" height="6" rx="3" fill="#596677"/>
+
+      <path d="M864 155L870 149M881 152H1085" stroke="#7d8b9e" stroke-width="1.2"/>
+    </g>
+  </g>
+  <g class="reveal" style="--at:3.16s">
+    <g opacity="0.35">
+      <rect x="862" y="165" width="10" height="10" rx="2" fill="#19212b" stroke="#5b6777"/>
+      <rect x="884" y="167" width="126" height="6" rx="3" fill="#596677"/>
+
+      <path d="M864 173L870 167M881 170H1013" stroke="#7d8b9e" stroke-width="1.2"/>
+    </g>
+  </g>
+  <g class="reveal" style="--at:3.24s">
+    <g opacity="0.35">
+      <rect x="862" y="183" width="10" height="10" rx="2" fill="#19212b" stroke="#5b6777"/>
+      <rect x="884" y="185" width="174" height="6" rx="3" fill="#596677"/>
+
+      <path d="M864 191L870 185M881 188H1061" stroke="#7d8b9e" stroke-width="1.2"/>
+    </g>
+  </g>
+  <g class="reveal" style="--at:3.32s">
+    <g opacity="1">
+      <rect x="862" y="201" width="10" height="10" rx="2" fill="#47c975" stroke="#47c975"/>
+      <rect x="884" y="203" width="158" height="6" rx="3" fill="#85d9a3"/>
+
+      <path d="M864 206L866 208L870 204" fill="none" stroke="#0d3420" stroke-width="1.1"/>
+    </g>
+  </g>
+
+  <!-- Routing: a contiguous numeric scale drives a single lit branch. -->
+  <text class="label reveal" style="--at:.85s" x="66" y="269">routing</text>
+  <g class="reveal" style="--at:1s">
+    <path d="M78 298H286Q298 298 298 310V343Q298 355 286 355H91L78 367V355Q66 355 66 343V310Q66 298 78 298Z" fill="#0e141c" stroke="#3a4a5d"/>
+    <circle cx="86" cy="317" r="3" fill="#79b8ff"/>
+    <rect x="100" y="314" width="162" height="6" rx="3" fill="#64758a"/>
+    <rect x="84" y="334" width="114" height="5" rx="2.5" fill="#3e4e62"/>
+  </g>
+  <g class="reveal" style="--at:2.65s">
+    <rect x="412" y="255" width="132" height="26" rx="7" fill="#0e1621" stroke="#334963"/>
+    <text class="question" x="427" y="273">difficulty?</text>
+  </g>
+  <g class="reveal" style="--at:2.85s">
+    <g clip-path="url(#gauge-clip)">
+      <rect x="416" y="319" width="76" height="14" fill="#386ca6"/>
+      <rect x="492" y="319" width="152" height="14" fill="#354355"/>
+      <rect x="644" y="319" width="76" height="14" fill="#2b7550"/>
+    </g>
+    <path d="M492 311V342M644 311V342" fill="none" stroke="#8aa0ba" stroke-dasharray="3 4" stroke-opacity=".6"/>
+  </g>
+  <g class="pointer">
+    <path d="M462 313V339" stroke="#dcecff" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="462" cy="326" r="3.5" fill="#dcecff" filter="url(#glow)"/>
+    <text class="number" x="462" y="364" text-anchor="middle">0.3</text>
+  </g>
+  <g class="reveal" style="--at:3.55s">
+    <path d="M862 326H908Q920 326 920 314V296Q920 284 932 284H984M908 326H984M908 326Q920 326 920 338V356Q920 368 932 368H984" fill="none" stroke="#465569" stroke-width="1.5"/>
+    <circle cx="992" cy="284" r="5" fill="#131920" stroke="#5c7189" stroke-width="1.5"/>
+    <circle cx="992" cy="326" r="5" fill="#131920" stroke="#5c7189" stroke-width="1.5"/>
+    <circle cx="992" cy="368" r="5" fill="#131920" stroke="#5c7189" stroke-width="1.5"/>
+    <text x="1009" y="289" font-size="15" fill="#78b7ff">cheap</text>
+    <text x="1009" y="331" font-size="15" fill="#7f90a5">current</text>
+    <text x="1009" y="373" font-size="15" fill="#7f90a5">strong</text>
+  </g>
+  <path class="chosen" d="M862 326H908Q920 326 920 314V296Q920 284 932 284H986" fill="none" stroke="#79b8ff" stroke-width="2.5" stroke-linecap="round"/>
+  <g class="reveal" style="--at:4.25s">
+    <circle cx="992" cy="284" r="5" fill="#79b8ff" filter="url(#glow)"/>
+    <text x="1009" y="289" font-size="15" fill="#bdd9fa">cheap</text>
+  </g>
 </svg>
