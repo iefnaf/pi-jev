@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
-import { completeJevArguments, type CompletionItem } from './completions.js';
+import { completeJevArguments, setModelOptions, type CompletionItem } from './completions.js';
+import { modelsFromContext } from './models.js';
 import { runCli, type CliIo } from '../cli/main.js';
 import { defaultConfigPaths } from '../shared/config.js';
 
@@ -22,6 +23,10 @@ export function runJevCommand(rawArgs: string, io: CliIo): number {
  *   /jev get <key>            /jev unset <key>   /jev keys   /jev path
  */
 export default function (pi: ExtensionAPI): void {
+  pi.on('session_start', (_event, ctx) => {
+    setModelOptions(modelsFromContext(ctx));
+  });
+
   pi.registerCommand('jev', {
     description: 'Configure pi-jev: /jev [set|get|unset|keys|path] ...',
     getArgumentCompletions: (prefix: string): CompletionItem[] | null => completeJevArguments(prefix),

@@ -13,11 +13,20 @@ export async function runRouting(
   return decideRouting(response.answers, config);
 }
 
-/** Parses a `"provider/model-id"` reference. */
-export function parseModelRef(ref: string): { provider: string; id: string } | undefined {
+/**
+ * Parses a `"provider/model-id"` reference, optionally with a `:thinking`
+ * suffix (pi style, e.g. `deepseek/deepseek-flash:high`).
+ */
+export function parseModelRef(ref: string): { provider: string; id: string; thinking?: string } | undefined {
   const slash = ref.indexOf('/');
   if (slash <= 0 || slash === ref.length - 1) return undefined;
-  return { provider: ref.slice(0, slash), id: ref.slice(slash + 1) };
+  const rest = ref.slice(slash + 1);
+  const colon = rest.lastIndexOf(':');
+  if (colon > 0) {
+    const thinking = rest.slice(colon + 1);
+    if (thinking) return { provider: ref.slice(0, slash), id: rest.slice(0, colon), thinking };
+  }
+  return { provider: ref.slice(0, slash), id: rest };
 }
 
 function errorMessage(error: unknown): string {
@@ -67,6 +76,9 @@ export default function (pi: ExtensionAPI): void {
       if (!switched) {
         ctx.ui.notify(`jev-routing: auth not configured for ${ref.provider}/${ref.id}; keeping current model`, 'warning');
         return;
+      }
+      if (ref.thinking) {
+        pi.setThinkingLevel(ref.thinking as Parameters<typeof pi.setThinkingLevel>[0]);
       }
       ctx.ui.notify(
         `jev-routing: ${decision.reason} request (difficulty ${decision.levels.toFixed(1)}/${DIFFICULTY_LEVELS.length - 1}, ` +

@@ -42,7 +42,7 @@ describe('jev settings menu', () => {
   it('shows group screens with effective values from the files', () => {
     const paths = makePaths({ global: { routing: { cheap: 'deepseek/deepseek-flash' } } });
     const routing = screen(paths, 'routing');
-    expect(routing.items?.map((item) => item.id)).toContain('routing.cheap');
+    expect(routing.items?.map((item) => item.id)).toEqual(['routing.cheap', 'routing.strong']);
     const cheap = routing.items?.find((item) => item.id === 'routing.cheap');
     expect(cheap?.currentValue).toContain('deepseek/deepseek-flash');
     const general = screen(paths, 'general');
@@ -59,14 +59,14 @@ describe('jev settings menu', () => {
 
   it('setValue writes the file and goes back', () => {
     const paths = makePaths();
-    const { definition, editor } = menu(paths, { editingKey: 'routing.easyMax' });
+    const { definition, editor } = menu(paths, { editingKey: 'compaction.keepThreshold' });
     expect(call(definition.actions.setValue, { state: editor, value: '0.7' })).toEqual({ kind: 'back' });
-    expect(JSON.parse(readFileSync(paths.globalPath, 'utf8'))).toEqual({ routing: { easyMax: 0.7 } });
+    expect(JSON.parse(readFileSync(paths.globalPath, 'utf8'))).toEqual({ compaction: { keepThreshold: 0.7 } });
   });
 
   it('setValue rejects invalid values without writing', () => {
     const paths = makePaths();
-    const { definition, editor } = menu(paths, { editingKey: 'routing.easyMax' });
+    const { definition, editor } = menu(paths, { editingKey: 'compaction.keepThreshold' });
     const result = call(definition.actions.setValue, { state: editor, value: 'NaN!' }) as { kind: string };
     expect(result.kind).toBe('rejected');
     expect(() => readFileSync(paths.globalPath, 'utf8')).toThrow();
@@ -79,9 +79,10 @@ describe('jev settings menu', () => {
     expect(JSON.parse(readFileSync(paths.globalPath, 'utf8'))).toEqual({ provider: 'openrouter' });
   });
 
-  it('editKey routes enums to chooseValue, free-form to inputValue', () => {
+  it('editKey routes enums to chooseValue, models to chooseModel, free-form to inputValue', () => {
     const paths = makePaths();
     const { definition, editor } = menu(paths);
+    expect(call(definition.actions.editKey, { state: editor, itemId: 'routing.cheap' })).toEqual({ kind: 'to', screen: 'chooseModel' });
     expect(call(definition.actions.editKey, { state: editor, itemId: 'provider' })).toEqual({ kind: 'to', screen: 'chooseValue' });
     expect(editor.editingKey).toBe('provider');
     expect(call(definition.actions.editKey, { state: editor, itemId: 'model' })).toEqual({ kind: 'to', screen: 'inputValue' });

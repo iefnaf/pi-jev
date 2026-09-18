@@ -159,7 +159,11 @@ export interface ConfigKeyMeta {
   description: string;
 }
 
-/** All file/env-settable keys. `apiKey` is deliberately absent: env-only. */
+/**
+ * All user-facing keys. `apiKey` is deliberately absent (env-only), and the
+ * routing thresholds (easyMax/hardMin/minConfidence) stay internal defaults —
+ * still tunable through `JEVC_ROUTE_*` env vars, but not exposed here.
+ */
 export const CONFIG_KEYS: readonly ConfigKeyMeta[] = [
   { path: 'provider', type: 'string', env: 'JEVC_PROVIDER', description: 'Jev transport: typesafe or openrouter' },
   { path: 'model', type: 'string', env: 'JEVC_MODEL', description: 'Jev model slug (e.g. typesafe/jev-1.13 on OpenRouter)' },
@@ -167,9 +171,6 @@ export const CONFIG_KEYS: readonly ConfigKeyMeta[] = [
   { path: 'disabled', type: 'boolean', env: 'JEVC_DISABLED', default: false, description: 'Bypass all pi-jev hooks' },
   { path: 'routing.cheap', type: 'string', env: 'JEVC_ROUTE_CHEAP', description: '"provider/model-id" for easy requests (enables routing)' },
   { path: 'routing.strong', type: 'string', env: 'JEVC_ROUTE_STRONG', description: '"provider/model-id" for hard requests (optional)' },
-  { path: 'routing.easyMax', type: 'number', env: 'JEVC_ROUTE_EASY_MAX', default: DEFAULTS.easyMax, description: 'Difficulty level (0..2) at or below which the cheap model is used' },
-  { path: 'routing.hardMin', type: 'number', env: 'JEVC_ROUTE_HARD_MIN', default: DEFAULTS.hardMin, description: 'Difficulty level at or above which the strong model is used' },
-  { path: 'routing.minConfidence', type: 'number', env: 'JEVC_ROUTE_MIN_CONFIDENCE', default: DEFAULTS.minConfidence, description: 'Minimum Jev confidence to act' },
   { path: 'compaction.keepThreshold', type: 'number', env: 'JEVC_KEEP_THRESHOLD', default: DEFAULTS.keepThreshold, description: 'Minimum keep probability for verbatim retention' },
   { path: 'compaction.borderline', type: 'number', env: 'JEVC_BORDERLINE', default: DEFAULTS.borderline, description: 'Band where a confident low-staleness score still keeps a result' },
   { path: 'compaction.preserveRecentMessages', type: 'number', env: 'JEVC_PRESERVE_RECENT', default: DEFAULTS.preserveRecentMessages, description: 'Newest messages within the summarized span that are never touched' },

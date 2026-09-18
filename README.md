@@ -63,7 +63,9 @@ Reads `messagesToSummarize` + `turnPrefixMessages`, keeps `firstKeptEntryId` as-
 
 ## routing
 
-Before each turn, Jev rates the request difficulty (`trivial / moderate / complex`). Confidently easy requests switch to `JEVC_ROUTE_CHEAP`, confidently hard ones to `JEVC_ROUTE_STRONG`; the middle band, low confidence, missing answers, unknown models, or missing auth keep the current model. Prompts with images never downgrade to a text-only model. The decision re-runs on every user prompt, so it self-corrects.
+Before each turn, Jev rates the request difficulty (`trivial / moderate / complex`). Confidently easy requests switch to `JEVC_ROUTE_CHEAP`, confidently hard ones to `JEVC_ROUTE_STRONG`; the middle band, low confidence, missing answers, unknown models, or missing auth keep the current model. Prompts with images never downgrade to a text-only model. The decision re-runs on every user prompt, so it self-corrects. Model refs follow pi conventions, including an optional thinking suffix (`provider/id:high`).
+
+Only the two model targets are user-facing; the difficulty thresholds and confidence gate are internal defaults for now.
 
 ```sh
 export JEVC_ROUTE_CHEAP=deepseek/deepseek-flash
@@ -74,13 +76,13 @@ export JEVC_ROUTE_STRONG=zai/glm-5.3   # optional
 
 Values resolve from layered sources, highest first: **environment variables** > **project file** (`.pi/jev.json`) > **global file** (`~/.pi/agent/jev.json`) > defaults. API keys are environment-only and are never written to files.
 
-Inside pi, bare `/jev` opens an interactive settings menu (arrow keys, built on [@narumitw/pi-tui-kit](https://www.npmjs.com/package/@narumitw/pi-tui-kit)): browse groups, edit values, toggle the write scope between the global and project file. Typed arguments still work and autocomplete fully (actions, keys, enum values), so nothing needs to be memorized either way. Hooks re-read config on every event, so changes apply immediately, no restart needed:
+Inside pi, bare `/jev` opens an interactive settings menu (arrow keys, built on [@narumitw/pi-tui-kit](https://www.npmjs.com/package/@narumitw/pi-tui-kit)): browse groups, edit values, toggle the write scope between the global and project file. Routing models are picked from the models already configured in pi — including an optional thinking level — never typed by hand. Typed arguments still work and autocomplete fully (actions, keys, model refs), so nothing needs to be memorized either way. Hooks re-read config on every event, so changes apply immediately, no restart needed:
 
 ```
 /jev                                                # show resolved values + sources
 /jev set routing.cheap deepseek/deepseek-flash
 /jev set model typesafe/jev-1.13 -l                # -l targets the project file
-/jev get routing.easyMax
+/jev get routing.cheap
 /jev unset routing.strong
 ```
 
@@ -124,9 +126,6 @@ routing:
 | --- | --- | --- |
 | `JEVC_ROUTE_CHEAP` | — | `"provider/model-id"` for easy requests (enables routing) |
 | `JEVC_ROUTE_STRONG` | — | `"provider/model-id"` for hard requests (optional) |
-| `JEVC_ROUTE_EASY_MAX` | `0.5` | Difficulty level (0..2) at or below which the cheap model is used |
-| `JEVC_ROUTE_HARD_MIN` | `1.5` | Difficulty level at or above which the strong model is used |
-| `JEVC_ROUTE_MIN_CONFIDENCE` | `0.6` | Minimum Jev confidence to act |
 
 ## Development
 

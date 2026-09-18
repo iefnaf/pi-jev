@@ -67,12 +67,13 @@ describe('runCli', () => {
     const { io, lines } = makeIo();
     expect(runCli(['config', 'set', 'routing.cheap', 'deepseek/deepseek-flash'], io)).toBe(0);
     expect(JSON.parse(readFileSync(io.globalPath, 'utf8'))).toEqual({ routing: { cheap: 'deepseek/deepseek-flash' } });
-    expect(runCli(['config', 'set', 'routing.easyMax', '0.4'], io)).toBe(0);
+    expect(runCli(['config', 'set', 'compaction.keepThreshold', '0.45'], io)).toBe(0);
     expect(JSON.parse(readFileSync(io.globalPath, 'utf8'))).toEqual({
-      routing: { cheap: 'deepseek/deepseek-flash', easyMax: 0.4 },
+      routing: { cheap: 'deepseek/deepseek-flash' },
+      compaction: { keepThreshold: 0.45 },
     });
-    expect(runCli(['config', 'get', 'routing.easyMax'], io)).toBe(0);
-    expect(lines.at(-1)).toBe('0.4');
+    expect(runCli(['config', 'get', 'compaction.keepThreshold'], io)).toBe(0);
+    expect(lines.at(-1)).toBe('0.45');
   });
 
   it('set --project writes the project file', () => {
@@ -90,7 +91,7 @@ describe('runCli', () => {
 
   it('rejects values of the wrong type', () => {
     const { io, errs } = makeIo();
-    expect(runCli(['config', 'set', 'routing.easyMax', 'abc'], io)).toBe(1);
+    expect(runCli(['config', 'set', 'compaction.keepThreshold', 'abc'], io)).toBe(1);
     expect(errs.some((line) => line.includes('expected a number'))).toBe(true);
     expect(runCli(['config', 'set', 'disabled', 'maybe'], io)).toBe(1);
     expect(runCli(['config', 'set', 'provider', 'weird'], io)).toBe(1);
@@ -117,8 +118,8 @@ describe('runCli', () => {
     expect(modelLine).toContain('# env');
     const providerLine = lines.find((line) => line.startsWith('provider'));
     expect(providerLine).toContain('# project');
-    const easyLine = lines.find((line) => line.startsWith('routing.easyMax'));
-    expect(easyLine).toContain('# default');
+    const keepLine = lines.find((line) => line.startsWith('compaction.keepThreshold'));
+    expect(keepLine).toContain('# default');
   });
 
   it('project file beats global file', () => {

@@ -116,6 +116,8 @@ function tryReadFile(path: string, io: CliIo): JevFileConfig | undefined {
 
 export function valueAt(config: unknown, path: string): unknown {
   const record = config as Record<string, unknown>;
+  // `compaction.*` keys are flat fields on JevConfig; `routing.*` is nested.
+  if (path.startsWith('compaction.')) return record[path.slice('compaction.'.length)];
   const [section, key] = path.split('.');
   if (!key) return record[section];
   return (record[section] as Record<string, unknown> | undefined)?.[key];

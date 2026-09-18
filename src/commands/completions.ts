@@ -1,4 +1,5 @@
 import { CONFIG_KEYS } from '../shared/config.js';
+import type { ModelOption } from './models.js';
 
 /**
  * Completion items as pi's autocomplete expects them: `value` replaces the
@@ -51,6 +52,15 @@ export const VALUE_OPTIONS: Record<string, { label: string; description: string 
  * Completes the argument text after `/jev `. Flags are position-neutral; the
  * last non-flag token in progress decides what is offered.
  */
+/** Model refs for cheap/strong value completion; empty when no snapshot is available. */
+const modelOptions: ModelOption[] = [];
+
+/** Refreshes the model snapshot (called on session_start). */
+export function setModelOptions(options: readonly ModelOption[]): void {
+  modelOptions.length = 0;
+  modelOptions.push(...options);
+}
+
 export function completeJevArguments(argText: string): CompletionItem[] | null {
   const endsWithSpace = /\s$/.test(argText);
   const tokens = argText.trim().split(/\s+/).filter(Boolean);
@@ -74,6 +84,15 @@ export function completeJevArguments(argText: string): CompletionItem[] | null {
     }
     if (action === 'set' && prior.length === 2) {
       const key = prior[1];
+      if (key === 'routing.cheap' || key === 'routing.strong') {
+        if (modelOptions.length === 0) return null;
+        const items = modelOptions.map((model) => ({
+          value: `set ${key} ${model.ref}${suffix}`,
+          label: model.name,
+          description: `${model.provider}${model.image ? ' · images' : ''}${model.reasoning ? ' · thinking' : ''}`,
+        }));
+        return filterItems(items, `set ${key}${suffix} ${partial}`.trim());
+      }
       const options = VALUE_OPTIONS[key] ?? [];
       if (options.length === 0) return null;
       const items = options.map((option) => ({

@@ -14,8 +14,8 @@ describe('completeJevArguments', () => {
   });
 
   it('completes config keys for set/get/unset, values replace the whole argument', () => {
-    const keys = values('set routing.ea');
-    expect(keys).toContain('set routing.easyMax');
+    const keys = values('set routing.ch');
+    expect(keys).toContain('set routing.cheap');
     expect(values('get compaction.min'))
       .toContain('get compaction.minReduction');
     expect(values('unset ')).toContain('unset model');
@@ -29,8 +29,8 @@ describe('completeJevArguments', () => {
   });
 
   it('keeps the -l flag in completed values', () => {
-    expect(values('set -l routing.ea')).toContain('set -l routing.easyMax');
-    expect(values('set routing.cheap ')).not.toContain('set -l routing.easyMax');
+    expect(values('set -l routing.ch')).toContain('set -l routing.cheap');
+    expect(values('set provider o')).not.toContain('set provider typesafe -l');
   });
 
   it('stops completing after key/value positions', () => {

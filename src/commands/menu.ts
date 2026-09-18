@@ -10,18 +10,25 @@ import {
 } from '../shared/config.js';
 import { coerce, keyMeta, readOrInit, saveFile, setPath, valueAt } from '../cli/main.js';
 import { VALUE_OPTIONS } from './completions.js';
+import { THINKING_LEVELS, type ModelOption } from './models.js';
 
-export type MenuScreenId = 'main' | 'general' | 'compaction' | 'routing' | 'chooseValue' | 'inputValue';
+export type MenuScreenId = 'main' | 'general' | 'compaction' | 'routing' | 'chooseValue' | 'chooseModel' | 'chooseThinking' | 'inputValue';
 export type MenuActionId =
   | 'toggleScope'
   | 'editKey'
   | 'setEnum'
   | 'setValue'
+  | 'pickModel'
+  | 'pickThinking'
   | 'showResolved';
 
 export interface EditorState {
   scope: 'global' | 'project';
   editingKey: string;
+  /** Model picked in chooseModel, awaiting an optional thinking level. */
+  selectedModelRef?: string;
+  /** Whether the selected model supports thinking. */
+  selectedModelReasoning?: boolean;
 }
 
 export interface MenuPaths {
@@ -93,6 +100,7 @@ export function buildJevMenu(
   paths: MenuPaths,
   state: EditorState,
   io: { out(text: string): void },
+  models: readonly ModelOption[] = [],
 ) {
   return defineMenu<EditorState, MenuScreenId, MenuActionId, ExtensionCommandContext>({
     start: 'main',
@@ -133,6 +141,41 @@ export function buildJevMenu(
       general: () => groupScreen('general', 'pi-jev — General', paths),
       compaction: () => groupScreen('compaction', 'pi-jev — Compaction', paths),
       routing: () => groupScreen('routing', 'pi-jev — Routing', paths),
+      chooseModel: () => {
+        const current = displayValue(keyMeta(state.editingKey)!, paths);
+        const items = [
+          ...(current !== 'unset' ? [{ id: '__unset__', label: '(unset)', description: 'clear this key' }] : []),
+          ...models.map((model) => ({
+            id: model.ref,
+            label: model.name,
+            description: `${model.provider}${model.image ? ' · images' : ''}${model.reasoning ? ' · thinking' : ''}${model.contextWindow ? ` · ${Math.round(model.contextWindow / 1000)}k ctx` : ''}`,
+          })),
+        ];
+        return {
+          kind: 'choice',
+          title: `pi-jev — ${state.editingKey}`,
+          lines: models.length === 0 ? ['No models found in pi (check provider auth).'] : [],
+          items,
+          action: 'pickModel',
+          enableSearch: true,
+          hint: 'back',
+        };
+      },
+      chooseThinking: () => {
+        const model = models.find((entry) => entry.modelRef === state.selectedModelRef);
+        return {
+          kind: 'choice',
+          title: `pi-jev — thinking level`,
+          lines: [`${state.selectedModelRef ?? ''} (thinking optional — default keeps the model's own)`],
+          items: [
+            { id: '__default__', label: 'default', description: "no override (model default)" },
+            ...(model?.reasoning !== false && model ? THINKING_LEVELS.map((level) => ({ id: level, label: level })) : []),
+          ],
+          action: 'pickThinking',
+          initialItemId: '__default__',
+          hint: 'back',
+        };
+      },
       chooseValue: () => {
         const options = VALUE_OPTIONS[state.editingKey] ?? [];
         return {
@@ -167,10 +210,35 @@ export function buildJevMenu(
       editKey: ({ itemId }) => {
         if (!keyMeta(itemId)) return { kind: 'rejected', error: new Error(`unknown key "${itemId}"`) };
         state.editingKey = itemId;
+        if (itemId === 'routing.cheap' || itemId === 'routing.strong') return { kind: 'to', screen: 'chooseModel' };
         return VALUE_OPTIONS[itemId] ? { kind: 'to', screen: 'chooseValue' } : { kind: 'to', screen: 'inputValue' };
       },
       setEnum: ({ itemId }) => {
         writeKey(paths, state.scope, state.editingKey, itemId);
+        return { kind: 'back' };
+      },
+      pickModel: ({ itemId }) => {
+        if (itemId === '__unset__') {
+          const targetPath = state.scope === 'project' ? paths.projectPath : paths.globalPath;
+          const file = readOrInit(targetPath);
+          const [section, key] = state.editingKey.split('.') as [string, string];
+          delete ((file as Record<string, Record<string, unknown>>)[section] ??= {})[key];
+          if (Object.keys((file as Record<string, Record<string, unknown>>)[section]).length === 0) {
+            delete (file as Record<string, unknown>)[section];
+          }
+          saveFile(targetPath, file);
+          return { kind: 'back' };
+        }
+        const model = models.find((entry) => entry.ref === itemId);
+        state.selectedModelRef = itemId;
+        state.selectedModelReasoning = model?.reasoning ?? false;
+        if (state.selectedModelReasoning) return { kind: 'to', screen: 'chooseThinking' };
+        writeKey(paths, state.scope, state.editingKey, itemId);
+        return { kind: 'back' };
+      },
+      pickThinking: ({ itemId }) => {
+        const ref = itemId === '__default__' ? state.selectedModelRef : `${state.selectedModelRef}:${itemId}`;
+        writeKey(paths, state.scope, state.editingKey, ref ?? '');
         return { kind: 'back' };
       },
       setValue: ({ value }) => {
@@ -209,7 +277,8 @@ export async function openJevSettingsMenu(
   }
   const controller = new AbortController();
   const state: EditorState = { scope: 'global', editingKey: 'model' };
-  const menu = buildJevMenu(paths, state, io);
+  const { modelsFromContext } = await import('./models.js');
+  const menu = buildJevMenu(paths, state, io, modelsFromContext(ctx));
   try {
     await runMenu(ctx, menu, {
       getState: () => state,
