@@ -48,7 +48,7 @@ export OPENROUTER_API_KEY="your-openrouter-api-key"
 ### 2. 安装并启动
 
 ```sh
-pi install https://github.com/iefnaf/pi-jev
+pi install npm:@alexlikevibe/pi-jev
 pi config   # 检查已启用的 pi-jev 扩展
 pi
 ```
@@ -77,7 +77,15 @@ pi
 配置**默认写入全局文件**，`disabled` 也不例外；使用 `-l` 可限定到项目。若只想对一次 pi 进程跳过两项功能，使用 `JEVC_DISABLED=1 pi` 启动。
 
 <details>
-<summary>从本地源码安装，或单独加载一个扩展</summary>
+<summary>从 GitHub、本地源码安装，或单独加载一个扩展</summary>
+
+直接从 GitHub 安装：
+
+```sh
+pi install https://github.com/iefnaf/pi-jev
+```
+
+从本地源码安装：
 
 ```sh
 git clone https://github.com/iefnaf/pi-jev.git

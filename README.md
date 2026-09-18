@@ -48,7 +48,7 @@ The provider is auto-detected when no provider is explicitly configured. If both
 ### 2. Install and launch
 
 ```sh
-pi install https://github.com/iefnaf/pi-jev
+pi install npm:@alexlikevibe/pi-jev
 pi config   # Review which pi-jev extensions are enabled
 pi
 ```
@@ -77,7 +77,15 @@ Open **Routing**, choose a `cheap` and/or `strong` target from pi's model list, 
 Settings writes are **global by default**, including `disabled`; use `-l` for project scope. To bypass both features for one pi process, launch it with `JEVC_DISABLED=1 pi`.
 
 <details>
-<summary>Install from a checkout or load a single extension</summary>
+<summary>Install from GitHub, a checkout, or load a single extension</summary>
+
+To install directly from GitHub:
+
+```sh
+pi install https://github.com/iefnaf/pi-jev
+```
+
+From a local checkout:
 
 ```sh
 git clone https://github.com/iefnaf/pi-jev.git

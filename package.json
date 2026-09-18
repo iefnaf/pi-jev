@@ -1,9 +1,13 @@
 {
-  "name": "pi-jev",
+  "name": "@alexlikevibe/pi-jev",
   "version": "0.2.0",
   "description": "Pi extension suite powered by Jev: selective context compaction and model routing, each an independently toggleable extension.",
   "type": "module",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepare": "npm run build",
@@ -30,6 +34,7 @@
   "keywords": [
     "pi",
     "pi-extension",
+    "pi-package",
     "jev",
     "typesafe",
     "compaction",
