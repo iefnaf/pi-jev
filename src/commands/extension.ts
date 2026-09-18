@@ -26,6 +26,17 @@ export default function (pi: ExtensionAPI): void {
     description: 'Configure pi-jev: /jev [set|get|unset|keys|path] ...',
     getArgumentCompletions: (prefix: string): CompletionItem[] | null => completeJevArguments(prefix),
     handler: async (args, ctx) => {
+      const paths = defaultConfigPaths();
+      if (!(args ?? '').trim()) {
+        // Bare /jev opens the interactive settings menu (TUI mode only).
+        const { openJevSettingsMenu } = await import('./menu.js');
+        await openJevSettingsMenu(ctx, paths, {
+          out: (text) => {
+            ctx.ui.notify(text, 'info');
+          },
+        });
+        return;
+      }
       const lines: string[] = [];
       const errs: string[] = [];
       const code = runJevCommand(args ?? '', {

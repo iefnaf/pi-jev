@@ -36,17 +36,17 @@ Sources resolve highest-first: environment variables > project file > global fil
 API keys are environment-only and never stored in files.
 Changes take effect after pi restarts or /reload.`;
 
-function keyMeta(path: string): ConfigKeyMeta | undefined {
+export function keyMeta(path: string): ConfigKeyMeta | undefined {
   return CONFIG_KEYS.find((key) => key.path === path);
 }
 
-function getPath(file: JevFileConfig, path: string): unknown {
+export function getPath(file: JevFileConfig, path: string): unknown {
   const [section, key] = path.split('.');
   if (!key) return (file as Record<string, unknown>)[section];
   return (file as Record<string, Record<string, unknown>>)[section]?.[key];
 }
 
-function setPath(file: JevFileConfig, path: string, value: unknown): void {
+export function setPath(file: JevFileConfig, path: string, value: unknown): void {
   const [section, key] = path.split('.');
   if (!key) {
     (file as Record<string, unknown>)[section] = value;
@@ -66,7 +66,7 @@ function deletePath(file: JevFileConfig, path: string): boolean {
   return true;
 }
 
-function coerce(meta: ConfigKeyMeta, raw: string): string | number | boolean {
+export function coerce(meta: ConfigKeyMeta, raw: string): string | number | boolean {
   if (meta.type === 'number') {
     const value = Number(raw);
     if (!Number.isFinite(value)) throw new Error(`${meta.path}: expected a number, got "${raw}"`);
@@ -85,7 +85,7 @@ function coerce(meta: ConfigKeyMeta, raw: string): string | number | boolean {
   return value;
 }
 
-function readOrInit(path: string): JevFileConfig {
+export function readOrInit(path: string): JevFileConfig {
   try {
     return readConfigFile(path);
   } catch (error) {
@@ -94,7 +94,7 @@ function readOrInit(path: string): JevFileConfig {
   }
 }
 
-function saveFile(path: string, file: JevFileConfig): void {
+export function saveFile(path: string, file: JevFileConfig): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(file, null, 2) + '\n');
 }
@@ -114,14 +114,14 @@ function tryReadFile(path: string, io: CliIo): JevFileConfig | undefined {
   }
 }
 
-function valueAt(config: unknown, path: string): unknown {
+export function valueAt(config: unknown, path: string): unknown {
   const record = config as Record<string, unknown>;
   const [section, key] = path.split('.');
   if (!key) return record[section];
   return (record[section] as Record<string, unknown> | undefined)?.[key];
 }
 
-function formatValue(value: unknown): string {
+export function formatValue(value: unknown): string {
   if (value === undefined) return 'unset';
   return String(value);
 }

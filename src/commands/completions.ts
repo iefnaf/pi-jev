@@ -36,7 +36,7 @@ function keyItems(action: string): CompletionItem[] {
 }
 
 /** Enum-valued keys offer their options; free-form keys get no value completion. */
-const VALUE_OPTIONS: Record<string, { label: string; description: string }[]> = {
+export const VALUE_OPTIONS: Record<string, { label: string; description: string }[]> = {
   provider: [
     { label: 'openrouter', description: 'OpenRouter Decisions API' },
     { label: 'typesafe', description: 'TypeSafe System One' },
