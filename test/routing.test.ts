@@ -9,8 +9,8 @@ function routing(overrides: Partial<RoutingConfig> = {}): RoutingConfig {
   return {
     cheap: 'deepseek/deepseek-flash',
     strong: 'zai/glm-5.3',
-    easyMax: 1.5,
-    hardMin: 3.5,
+    easyMax: 0.5,
+    hardMin: 1.5,
     minConfidence: 0.6,
     ...overrides,
   };
@@ -21,7 +21,7 @@ function difficulty(score: number, confidence = 0.8): Record<string, JevAnswer> 
 }
 
 describe('routingQuestions', () => {
-  it('asks one score question over five difficulty levels', () => {
+  it('asks one score question over three difficulty levels', () => {
     const questions = routingQuestions();
     expect(Object.keys(questions)).toEqual(['difficulty']);
     expect(questions.difficulty.type).toBe('score');
@@ -30,11 +30,11 @@ describe('routingQuestions', () => {
 });
 
 describe('toLevels', () => {
-  it('maps both score formats into the 0..4 level space', () => {
+  it('maps both score formats into the 0..2 level space, clamped', () => {
     expect(toLevels(0)).toBe(0);
-    expect(toLevels(1)).toBe(4); // normalized 1.0 = hardest
-    expect(toLevels(2)).toBe(2); // level index 2 of 4
-    expect(toLevels(4)).toBe(4);
+    expect(toLevels(1)).toBe(2); // normalized 1.0 = hardest
+    expect(toLevels(2)).toBe(2); // level index 2 of 2
+    expect(toLevels(4)).toBe(2); // out-of-range clamped
   });
 });
 
@@ -42,19 +42,19 @@ describe('decideRouting', () => {
   const config = routing();
 
   it('routes confidently easy requests to the cheap model', () => {
-    const decision = decideRouting(difficulty(0.3), config); // 1.2 levels
+    const decision = decideRouting(difficulty(0.2), config); // 0.4 levels
     expect(decision.target).toBe('cheap');
     expect(decision.reason).toBe('easy');
   });
 
   it('routes confidently hard requests to the strong model', () => {
-    const decision = decideRouting(difficulty(4), config);
+    const decision = decideRouting(difficulty(1), config); // normalized 1.0 → 2 levels
     expect(decision.target).toBe('strong');
     expect(decision.reason).toBe('hard');
   });
 
   it('keeps the current model in the middle band', () => {
-    const decision = decideRouting(difficulty(0.5), config); // 2 levels
+    const decision = decideRouting(difficulty(0.5), config); // 1.0 level = moderate
     expect(decision.target).toBeNull();
     expect(decision.reason).toBe('middle');
   });
@@ -73,7 +73,7 @@ describe('decideRouting', () => {
 
   it('ignores tiers that are not configured', () => {
     expect(decideRouting(difficulty(0.2), routing({ cheap: undefined })).target).toBeNull();
-    expect(decideRouting(difficulty(4), routing({ strong: undefined })).target).toBeNull();
+    expect(decideRouting(difficulty(1), routing({ strong: undefined })).target).toBeNull();
   });
 });
 
@@ -106,12 +106,12 @@ describe('configFromEnv routing section', () => {
   it('reads routing variables with defaults', () => {
     const config = configFromEnv({
       JEVC_ROUTE_CHEAP: 'deepseek/deepseek-flash',
-      JEVC_ROUTE_HARD_MIN: '3.8',
+      JEVC_ROUTE_HARD_MIN: '1.8',
     });
     expect(config.routing.cheap).toBe('deepseek/deepseek-flash');
     expect(config.routing.strong).toBeUndefined();
-    expect(config.routing.hardMin).toBe(3.8);
-    expect(config.routing.easyMax).toBe(1.5);
+    expect(config.routing.hardMin).toBe(1.8);
+    expect(config.routing.easyMax).toBe(0.5);
     expect(config.routing.minConfidence).toBe(0.6);
   });
 });

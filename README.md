@@ -5,7 +5,7 @@ A [pi](https://github.com/earendil-works/pi-mono) extension suite powered by [Je
 | Extension | What it does | pi hook | Jev questions |
 | --- | --- | --- | --- |
 | **compaction** | Replaces the LLM-summary compaction with selective retention: stale tool outputs dropped/truncated, everything else verbatim | `session_before_compact` | `noul` keep-call, `noul` keep-result, `score` staleness |
-| **routing** | Routes each turn to a cheap or strong model by request difficulty | `before_agent_start` | `score` difficulty (5 levels) + confidence |
+| **routing** | Routes each turn to a cheap or strong model by request difficulty | `before_agent_start` | `score` difficulty (3 levels) + confidence |
 
 Planned: auto-mode safety gate (`tool_call`), prompt-injection screening (`tool_result`), continuous context trimming (`context`).
 
@@ -59,7 +59,7 @@ Reads `messagesToSummarize` + `turnPrefixMessages`, keeps `firstKeptEntryId` as-
 
 ## routing
 
-Before each turn, Jev rates the request difficulty (`trivial…very complex`). Confidently easy requests switch to `JEVC_ROUTE_CHEAP`, confidently hard ones to `JEVC_ROUTE_STRONG`; the middle band, low confidence, missing answers, unknown models, or missing auth keep the current model. Prompts with images never downgrade to a text-only model. The decision re-runs on every user prompt, so it self-corrects.
+Before each turn, Jev rates the request difficulty (`trivial / moderate / complex`). Confidently easy requests switch to `JEVC_ROUTE_CHEAP`, confidently hard ones to `JEVC_ROUTE_STRONG`; the middle band, low confidence, missing answers, unknown models, or missing auth keep the current model. Prompts with images never downgrade to a text-only model. The decision re-runs on every user prompt, so it self-corrects.
 
 ```sh
 export JEVC_ROUTE_CHEAP=deepseek/deepseek-flash

@@ -1,7 +1,7 @@
 import type { JevAnswer, JevQuestions } from '../vendor/fast-jev-compaction/index.js';
 import type { RoutingConfig } from '../shared/config.js';
 
-export const DIFFICULTY_LEVELS = ['trivial', 'simple', 'moderate', 'complex', 'very complex'] as const;
+export const DIFFICULTY_LEVELS = ['trivial', 'moderate', 'complex'] as const;
 
 export const ROUTING_CONTEXT =
   'A coding assistant is about to start a turn. `prompt` is the user request starting it. The question rates how demanding the request is for the assistant, so that easy requests can go to a cheaper model and hard ones to a stronger model.';
@@ -10,7 +10,7 @@ export function routingQuestions(): JevQuestions {
   return {
     difficulty: {
       type: 'score',
-      instructions: `Rate how demanding this coding request is: level 0 is trivial (greetings, simple lookups, formatting), level ${DIFFICULTY_LEVELS.length - 1} is very complex (multi-file refactors, subtle debugging, architecture decisions)`,
+      instructions: `Rate how demanding this coding request is: level 0 is trivial (greetings, quick questions, simple lookups, formatting, single-file mechanical edits), level ${DIFFICULTY_LEVELS.length - 1} is complex (multi-file refactors, subtle debugging, architecture decisions)`,
       criteria: [...DIFFICULTY_LEVELS],
     },
   };
@@ -47,12 +47,13 @@ function scoreFrom(answers: Record<string, JevAnswer>): { score: number; confide
 }
 
 /**
- * Maps a Jev score to the 0..4 level space. Jev returns either a 0..1
+ * Maps a Jev score to the 0..N level space (N = levels - 1), clamped. Jev returns either a 0..1
  * continuous score or a level index; `score <= 1` is read as normalized
  * (a literal 1 therefore means "hardest", the conservative direction).
  */
 export function toLevels(score: number): number {
-  return (score <= 1 ? score : score / (DIFFICULTY_LEVELS.length - 1)) * (DIFFICULTY_LEVELS.length - 1);
+  const span = DIFFICULTY_LEVELS.length - 1;
+  return Math.min(span, Math.max(0, (score <= 1 ? score : score / span) * span));
 }
 /**
  * Pure decision: easy requests go to the cheap model, hard ones to the strong

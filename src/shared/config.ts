@@ -55,9 +55,9 @@ export interface RoutingConfig {
   cheap: string | undefined;
   /** Hard-request target, `"provider/model-id"`; optional. */
   strong: string | undefined;
-  /** Difficulty level (0..4) at or below which the cheap model is used. */
+  /** Difficulty level (0..2) at or below which the cheap model is used. */
   easyMax: number;
-  /** Difficulty level (0..4) at or above which the strong model is used. */
+  /** Difficulty level (0..2) at or above which the strong model is used. */
   hardMin: number;
   /** Minimum Jev confidence to act on a decision. */
   minConfidence: number;
@@ -76,8 +76,8 @@ const DEFAULTS = {
   minReduction: 0.15,
   maxStateTokens: 25_000,
   maxRequestTokens: 30_000,
-  easyMax: 1.5,
-  hardMin: 3.5,
+  easyMax: 0.5,
+  hardMin: 1.5,
   minConfidence: 0.6,
 };
 

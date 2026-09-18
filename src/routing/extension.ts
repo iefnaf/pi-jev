@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { JevClient, type JevAsker } from '../vendor/fast-jev-compaction/index.js';
 import { configFromEnv, type RoutingConfig } from '../shared/config.js';
-import { decideRouting, ROUTING_CONTEXT, routingQuestions, type RoutingDecision } from './decide.js';
+import { decideRouting, DIFFICULTY_LEVELS, ROUTING_CONTEXT, routingQuestions, type RoutingDecision } from './decide.js';
 
 /** Asks Jev to rate the request difficulty and maps it to a routing target. */
 export async function runRouting(
@@ -69,7 +69,7 @@ export default function (pi: ExtensionAPI): void {
         return;
       }
       ctx.ui.notify(
-        `jev-routing: ${decision.reason} request (difficulty ${decision.levels.toFixed(1)}/4, ` +
+        `jev-routing: ${decision.reason} request (difficulty ${decision.levels.toFixed(1)}/${DIFFICULTY_LEVELS.length - 1}, ` +
           `confidence ${(decision.confidence * 100).toFixed(0)}%) → ${ref.provider}/${ref.id}`,
         'info',
       );
