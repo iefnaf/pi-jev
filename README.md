@@ -6,7 +6,7 @@
 
 _Typed System One judgments where an LLM call would be overkill — verbatim context compaction and per-turn model routing, each an independently toggleable extension._
 
-<img src="https://raw.githubusercontent.com/iefnaf/pi-jev/main/media/banner.svg?v=151c1d0" alt="pi events trigger typed Jev requests: keep scores select verbatim context, and a difficulty score selects a model" width="100%">
+<img src="https://raw.githubusercontent.com/iefnaf/pi-jev/151c1d07cefd549848b85f8cbccf2ce538ed93c9/media/banner.svg" alt="pi events trigger typed Jev requests: keep scores select verbatim context, and a difficulty score selects a model" width="100%">
 
 [![checks](https://img.shields.io/github/actions/workflow/status/iefnaf/pi-jev/test.yml?branch=main&style=for-the-badge&label=checks)](https://github.com/iefnaf/pi-jev/actions/workflows/test.yml)
 [![pi extension](https://img.shields.io/badge/pi-extension-8b5cf6?style=for-the-badge)](https://github.com/earendil-works/pi-coding-agent)
