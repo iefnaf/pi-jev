@@ -19,6 +19,8 @@
     "src",
     "extensions",
     "README.md",
+    "README.zh-CN.md",
+    "media",
     "LICENSE"
   ],
   "repository": {

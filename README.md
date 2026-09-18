@@ -2,263 +2,331 @@
 
 # pi-jev
 
-**Jev-powered extensions for [pi](https://github.com/earendil-works/pi-coding-agent)**
+**Selective context compaction and per-turn model routing for [pi](https://github.com/earendil-works/pi-coding-agent), powered by [Jev](https://typesafe.ai).**
 
-_Typed System One judgments where an LLM call would be overkill — verbatim context compaction and per-turn model routing, each an independently toggleable extension._
+**English** · [简体中文](README.zh-CN.md)
 
-<img src="https://raw.githubusercontent.com/iefnaf/pi-jev/151c1d07cefd549848b85f8cbccf2ce538ed93c9/media/banner.svg" alt="pi events trigger typed Jev requests: keep scores select verbatim context, and a difficulty score selects a model" width="100%">
+<img src="media/banner.svg" alt="Pi events trigger typed Jev requests: keep scores select context, and a difficulty score selects a model" width="100%">
 
 [![checks](https://img.shields.io/github/actions/workflow/status/iefnaf/pi-jev/test.yml?branch=main&style=for-the-badge&label=checks)](https://github.com/iefnaf/pi-jev/actions/workflows/test.yml)
 [![pi extension](https://img.shields.io/badge/pi-extension-8b5cf6?style=for-the-badge)](https://github.com/earendil-works/pi-coding-agent)
 [![Jev](https://img.shields.io/badge/Jev-TypeSafe%20%7C%20OpenRouter-0ea5e9?style=for-the-badge)](https://typesafe.ai)
 [![license](https://img.shields.io/badge/license-MIT-f4c430?style=for-the-badge)](LICENSE)
 
-<p align="center">
-  ⚡ One Jev request compacted a 32-message span from <strong>39,379</strong> to <strong>9,553</strong> characters in <strong>757 ms</strong> — 652 output tokens, no summarization model involved.
-</p>
-
 </div>
 
----
+pi-jev uses Jev's typed judgments to decide which tool outputs still matter and how demanding a user request is. It retains useful text instead of generating a new compaction summary, and can switch models before each turn. Both features are optional; if Jev is unavailable, pi continues with its normal compaction or the current model.
 
-pi-jev gives Pi two things it otherwise burns a model on: context compaction and model choice. Both are answered by [Jev](https://typesafe.ai) — typed questions with a small, fast, cheap model — and both are optional: every feature fails back to pi's native behavior, and each one can be toggled off on its own.
+| Extension | Purpose | Pi integration |
+| --- | --- | --- |
+| **Compaction** | Remove obsolete tool calls, shorten unneeded results, and retain remaining text verbatim | `session_before_compact` |
+| **Routing** | Send easy requests to a cheaper model and hard requests to a stronger model | `before_agent_start` |
+| **`/jev` settings** | Configure providers, compaction, and routing from an interactive menu | `/jev` command |
 
-| Extension | What it does | pi hook | Jev questions |
-| --- | --- | --- | --- |
-| **compaction** | Replaces LLM-summary compaction with selective retention: stale tool outputs dropped or truncated, everything else verbatim | `session_before_compact` | `noul` keep-call, `noul` keep-result, `score` staleness |
-| **routing** | Routes each turn to a cheap or strong model by request difficulty | `before_agent_start` | `score` difficulty (3 levels) + confidence |
-| **`/jev`** | Configures the whole suite from inside pi; changes apply without a restart | command | — |
+Each extension can be enabled or disabled independently through `pi config`. Configuration changes are read on the next hook, without restarting pi.
 
-## Why pi-jev?
+## Quick start
 
-|     | Capability | What it unlocks |
-| :-: | ---------- | --------------- |
-| ⚡ | **Cheap judgments** | One Jev request per compaction, one per turn — hundreds of tokens instead of thousands. |
-| 🧹 | **Verbatim compaction** | Nothing is rewritten: stale tool calls are dropped or head-truncated (and marked), the rest stays verbatim, in order. |
-| 🎯 | **Difficulty routing** | Easy prompts go to a cheap model, hard ones to a strong model, the middle band keeps whatever you are on. |
-| 🛡️ | **Fails back, always** | Missing key, Jev error, abort, thin reduction, unknown model, missing auth — pi's native behavior takes over. |
-| 🎛️ | **Zero memorization** | Bare `/jev` opens a menu; routing targets are picked from the models already configured in pi, thinking level included. |
-| 🧩 | **Toggleable per feature** | One pi package, three extensions, each visible in `pi config` and each with its own config section. |
+You need pi installed and an API key for **one** Jev transport: TypeSafe or OpenRouter. Routing targets also need to be configured and authenticated in pi.
 
-## How it works
+### 1. Configure a Jev API key
 
-1. A pi hook fires — `session_before_compact` before a summary, `before_agent_start` before a turn.
-2. The feature converts the relevant pi messages into one Jev `state` plus typed questions.
-3. Jev answers in a single request: keep/drop/truncate probabilities per tool call, or a difficulty score with confidence.
-4. The answers become a decision — a verbatim transcript, or a model switch applied to the session.
-5. Anything unexpected keeps pi's default behavior, and every decision is written into session history for audit.
+Choose one option in the shell where you will launch pi:
 
-A real compaction entry (numbers from an actual run, fields trimmed and decisions abbreviated):
+```sh
+# Option A: TypeSafe
+export TYPESAFE_API_KEY="your-typesafe-api-key"
+```
+
+```sh
+# Option B: OpenRouter
+export OPENROUTER_API_KEY="your-openrouter-api-key"
+```
+
+The provider is auto-detected when no provider is explicitly configured. If both keys are present, TypeSafe wins; set `JEVC_PROVIDER=openrouter` to select OpenRouter explicitly.
+
+### 2. Install and launch
+
+```sh
+pi install https://github.com/iefnaf/pi-jev
+pi config   # Review which pi-jev extensions are enabled
+pi
+```
+
+If you install into an already running pi session, use `/reload` to load the extensions.
+
+### 3. Configure inside pi
+
+```text
+/jev
+```
+
+Open **Routing**, choose a `cheap` and/or `strong` target from pi's model list, then optionally choose a thinking level. **Routing stays inactive until at least one target is set.** Compaction needs no model-target configuration; it runs with `/compact` or pi's automatic compaction.
+
+| Task | Command or action |
+| --- | --- |
+| Open settings | `/jev` |
+| Compact the current session | `/compact` |
+| Inspect available settings | `/jev keys` |
+| Read a routing target | `/jev get routing.cheap` |
+| Remove a routing target | `/jev unset routing.strong` |
+| Temporarily bypass both features | `/jev set disabled true` |
+| Re-enable both features | `/jev set disabled false` |
+| Write a project setting | Append `-l`, e.g. `/jev set provider openrouter -l` |
+
+Settings writes are **global by default**, including `disabled`; use `-l` for project scope. To bypass both features for one pi process, launch it with `JEVC_DISABLED=1 pi`.
+
+<details>
+<summary>Install from a checkout or load a single extension</summary>
+
+```sh
+git clone https://github.com/iefnaf/pi-jev.git
+cd pi-jev
+npm ci
+npm run build
+pi install /absolute/path/to/pi-jev
+```
+
+For a development run from the repository root:
+
+```sh
+pi -e ./extensions/compaction.ts
+pi -e ./extensions/routing.ts
+pi -e ./extensions/jev.ts
+```
+
+Each command loads one extension explicitly. The project's `.pi/extensions/jev-*` loaders are also auto-discovered once the repository is trusted.
+
+</details>
+
+## Context compaction
+
+Instead of asking a summarization model to rewrite the conversation, pi-jev asks Jev typed questions about each eligible tool call: whether to keep the call, whether to keep its full result (`noul`), and how stale the result is (`score`). It then renders the retained content as a transcript.
+
+- **Keep:** retain user and assistant text, pinned recent messages, and useful tool calls/results. The previous compaction summary is included as-is.
+- **Drop:** remove obsolete tool calls together with their results. The transcript header reports the removal count.
+- **Shorten:** retain a tool call but shorten a long result to its first `truncateHeadChars` characters, followed by an explicit truncation marker. Short results may remain unchanged.
+- **Rescue:** preserve a borderline result if a confident staleness judgment says it is still needed.
+- **Fall back:** let pi generate its normal summary when Jev fails, the request is aborted, the span is empty, or the estimated reduction is below `minReduction`. Missing or malformed per-call answers conservatively retain the affected call.
+
+Requests are batched to fit the configured state and request budgets; a compaction can use multiple Jev requests. Recent-message protection applies to the converted messages within the span pi supplies for compaction.
+
+**Verbatim applies to retained text, not every original message field:** images become `[image]` placeholders and assistant thinking blocks are omitted during conversion. Tool inputs are serialized into the transcript.
+
+### Example result
+
+An example run recorded in this project reduced a converted span from **32 messages / 39,379 characters** to **16 messages / 9,553 characters** in **757 ms**, using one Jev request and 652 output tokens. This is an illustrative result, not a latency or reduction guarantee.
+
+Successful compactions store audit data in the session's `compaction` entry:
 
 ```json
 {
   "engine": "jev",
   "stats": {
-    "messagesBefore": 32, "messagesAfter": 16,
-    "charsBefore": 39379, "charsAfter": 9553,
-    "calls": 15, "pinned": 3, "drop_call": 12,
-    "ms": 757, "requests": 1,
+    "messagesBefore": 32,
+    "messagesAfter": 16,
+    "charsBefore": 39379,
+    "charsAfter": 9553,
+    "calls": 15,
+    "pinned": 3,
+    "callsDropped": 12,
+    "ms": 757,
+    "requests": 1,
     "jevUsage": { "input": 9784, "output": 652 }
-  },
-  "decisions": [
-    { "id": "…", "tool": "bash", "action": "drop_call", "keepCall": 0.21, "keepResult": 0.18 },
-    { "id": "…", "tool": "write", "action": "keep",      "keepCall": 0.78, "keepResult": 0.81 }
-  ]
+  }
 }
 ```
 
-## Install
+This abbreviated example is the entry's `details` object. Inspect `details.engine`, `details.stats`, and `details.decisions` for the full outcome. The hook preserves `firstKeptEntryId` so pi can retain the rest of the session correctly.
 
-```sh
-# TypeSafe directly…
-export TYPESAFE_API_KEY=...
-# …or through OpenRouter (auto-detected from the key you set)
-export OPENROUTER_API_KEY=sk-or-v1-...
+## Model routing
 
-pi install https://github.com/iefnaf/pi-jev
-pi config                      # toggle extensions/compaction, extensions/routing, extensions/jev-commands
-```
+Before a turn, Jev evaluates the **current user prompt** on a three-level difficulty rubric:
 
-<details>
-<summary>Other install methods</summary>
-
-From a local checkout:
-
-```sh
-npm install && npm run build
-pi install /absolute/path/to/pi-jev
-```
-
-One development run, no install:
-
-```sh
-pi -e ./extensions/routing.ts        # a single extension
-```
-
-The project-local loaders under `.pi/extensions/jev-*` are auto-discovered once this repository is trusted, which is how the features are developed here.
-
-</details>
-
-## What you can ask for
-
-| You want | Run |
-| -------- | --- |
-| See every setting and where its value comes from | `/jev` |
-| Send trivial prompts to a cheap model | `/jev` → Routing → `cheap`, or `/jev set routing.cheap deepseek/deepseek-flash` |
-| Send hard prompts to a strong model with max reasoning | `/jev` → Routing → `strong` → pick model → pick thinking level |
-| Reclaim context in a long session | `/compact` (compaction also runs automatically at pi's threshold) |
-| Switch a feature off for one session | toggle it in `pi config`, or start pi with `JEVC_DISABLED=1` |
-| Audit what Jev decided | open the session's `compaction` entry: `details.engine`, `details.stats`, `details.decisions` |
-
-## compaction
-
-Jev scores every tool call in the span that pi is about to summarize, then removes what is stale instead of paraphrasing everything:
-
-- **Kept verbatim** — user and assistant text, the newest `preserveRecentMessages` messages, and every call Jev wants kept. The previous compaction summary is embedded as-is.
-- **Dropped** — calls and results below the keep threshold disappear as whole entries; the transcript header counts them (`N obsolete tool calls were removed`).
-- **Truncated** — borderline results keep their head (`truncateHeadChars`) with an explicit marker, so nothing silently changes meaning.
-- **Rescued** — inside the borderline band, a confident low-staleness `score` answer keeps a result that the raw probability would have cut.
-- **Aborted** — if the estimated reduction is below `minReduction`, pi's default compaction runs instead. Same for a missing key, a Jev error, or an aborted request.
-- **Recorded** — every decision, threshold, and Jev usage number lands in the entry's `details`, and `firstKeptEntryId` is preserved so the transcript stays replayable.
-
-From a real run: 32 messages and 39,379 characters became 16 messages and 9,553 characters — 15 tool calls scored, 3 pinned, 12 dropped, in one 757 ms request.
-
-## routing
-
-Before each turn, Jev rates the request on a three-level rubric and returns a confidence:
-
-| Level | Meaning |
-| :-: | --- |
-| `0` trivial | Greetings, quick lookups, formatting, mechanical single-file edits |
-| `1` moderate | Everyday coding — the home turf of your default model |
-| `2` complex | Multi-file refactors, subtle debugging, architecture decisions |
-
-Only the two ends act, and only when Jev is confident:
-
-| Condition | Result |
+| Level | Typical request |
 | --- | --- |
-| levels ≤ `0.5` and `routing.cheap` is set | switch to the cheap model |
-| levels ≥ `1.5` and `routing.strong` is set | switch to the strong model |
-| anything in between, or confidence < 0.6, or no answer | keep the current model |
+| `0` — trivial | Greetings, quick questions, formatting, mechanical single-file edits |
+| `1` — moderate | Everyday coding tasks |
+| `2` — complex | Multi-file refactors, subtle debugging, architecture decisions |
 
-Safety nets, in order: an unparsable ref, a model that pi does not know, an image prompt heading for a text-only model, a provider without auth, or a Jev failure — each one warns and keeps the current model. The decision re-runs on every user prompt, so it self-corrects, and switching to the model you are already on is a no-op.
+With the default thresholds:
 
-Model refs follow pi conventions, with an optional thinking suffix that is applied after the switch:
+| Condition | Action |
+| --- | --- |
+| Difficulty ≤ `0.5`, confidence ≥ `0.6`, and `routing.cheap` is set | Switch to the cheap model |
+| Difficulty ≥ `1.5`, confidence ≥ `0.6`, and `routing.strong` is set | Switch to the strong model |
+| Middle band, low confidence, missing answer, or unset target | Keep the current model |
 
-```sh
-/jev set routing.cheap deepseek/deepseek-flash
-/jev set routing.strong zhipu/glm-5.3:max          # :max pinned thinking level
-```
+**A middle-band request keeps the current model, including a model selected by an earlier turn.** It does not reset to an initial default. Routing uses the prompt rather than the full conversation history.
+
+Invalid model references, unknown models, missing provider authentication, and Jev failures keep the current model. A cheap target that only accepts text is skipped when the prompt includes images. Switching to the model already in use is a no-op. Successful switches and routing errors appear as pi UI notifications.
+
+Targets use `provider/model-id`, with an optional `:thinking` suffix, such as `:high` or `:max`. Use `/jev` to select models actually configured in your pi installation; thinking settings take effect when a model switch occurs.
 
 ## Configuration
 
-Values resolve from layered sources, highest first: **environment variables** > **project file** (`.pi/jev.json`) > **global file** (`~/.pi/agent/jev.json`) > defaults. API keys are environment-only and are never written to files.
+Settings resolve in this order, highest priority first:
 
-Inside pi, bare `/jev` opens an interactive settings menu (arrow keys, built on [@narumitw/pi-tui-kit](https://www.npmjs.com/package/@narumitw/pi-tui-kit)):
+1. Environment variables
+2. Project file: `.pi/jev.json`
+3. Global file: `~/.pi/agent/jev.json`
+4. Built-in defaults
 
-```
+API keys are **environment-only** and are never written to configuration files. Hooks reload configuration on every event, so changes apply to the next turn or compaction. Environment overrides continue to win over settings changed through `/jev`.
+
+### Interactive menu and commands
+
+Bare `/jev` opens the settings menu in interactive pi:
+
+```text
 pi-jev
-├─ Toggle scope (global ⇄ project)      # which file writes go to
+├─ Toggle scope (global ⇄ project)
 ├─ General        provider · model · baseUrl · disabled
-├─ Compaction     thresholds and ceilings
-├─ Routing        cheap · strong → pick from the models configured in pi
+├─ Compaction     thresholds and token budgets
+├─ Routing        cheap · strong → model → thinking level
 └─ Show resolved config
 ```
 
-Routing targets are chosen from pi's own model list — the same set `/model` shows — with an optional thinking level, never typed by hand. Typed arguments keep working and autocomplete fully (actions, keys, model refs):
+Typed commands support completion for actions, keys, and model references:
 
-```
-/jev set routing.cheap deepseek/deepseek-flash
-/jev set provider openrouter -l              # -l targets the project file
+```text
+/jev set provider openrouter -l
 /jev get routing.cheap
 /jev unset routing.strong
+/jev keys
+/jev path -l
 ```
 
-Hooks re-read config on every event, so `/jev set` applies to the next turn — no restart. From a checkout, the bundled CLI manages the same files from a shell:
+### Configuration file example
+
+A project `.pi/jev.json` can set the transport and compaction policy:
+
+```json
+{
+  "provider": "openrouter",
+  "disabled": false,
+  "compaction": {
+    "keepThreshold": 0.5,
+    "preserveRecentMessages": 3,
+    "minReduction": 0.15
+  }
+}
+```
+
+Add routing targets through `/jev` → **Routing**, or set `routing.cheap` / `routing.strong` to your configured model references. Either target can enable routing independently.
+
+### Shell CLI
+
+From a built checkout, the CLI manages the same settings files:
 
 ```sh
-node bin/pi-jev.js config                    # resolved values + each value's source
-node bin/pi-jev.js config set routing.cheap deepseek/deepseek-flash
+node bin/pi-jev.js config
+node bin/pi-jev.js config set provider openrouter -l
 node bin/pi-jev.js config get routing.cheap
 node bin/pi-jev.js config unset routing.strong
-node bin/pi-jev.js config keys               # every key, type, and env override
+node bin/pi-jev.js config keys
+node bin/pi-jev.js config path -l
 ```
 
-### Transports
+If the package's executable is on your `PATH`, use `pi-jev config …` instead. `get` reads the resolved value; `set`, `unset`, and `path` use global scope unless `-l` / `--project` is supplied.
 
-Both transports speak the same `{ model, state, questions }` → `{ answers }` protocol, so switching is pure configuration:
+### Jev transports
 
-| | TypeSafe (default) | OpenRouter |
+These are the defaults implemented by this project:
+
+| Setting | TypeSafe | OpenRouter |
 | --- | --- | --- |
-| Endpoint | `api.typesafe.ai/v1/systemone` | `openrouter.ai/api/alpha/decisions` (alpha) |
-| Key | `TYPESAFE_API_KEY` | `OPENROUTER_API_KEY` |
-| Model | `jev-latest` | `typesafe/jev-1.13` |
+| Provider | `typesafe` | `openrouter` |
+| Endpoint | `https://api.typesafe.ai/v1/systemone` | `https://openrouter.ai/api/alpha/decisions` (alpha) |
+| API key | `TYPESAFE_API_KEY` | `OPENROUTER_API_KEY` |
+| Jev model | `jev-latest` | `typesafe/jev-1.13` |
 
-`JEVC_PROVIDER` (`typesafe` / `openrouter`) overrides auto-detection; `JEVC_API_KEY` is provider-neutral (declare the provider to use it with OpenRouter); `JEVC_MODEL` and `JEVC_BASE_URL` override slug and endpoint on either transport.
+Both use the `{ model, state, questions }` → `{ answers }` protocol. The Jev model is separate from the pi models chosen as routing targets.
+
+`JEVC_API_KEY` overrides the selected provider's key. It does not select the provider by itself; pair it with `JEVC_PROVIDER=openrouter` when using an OpenRouter key.
 
 ### Environment variables
 
-Shared:
+General:
 
-| Variable | Default | Description |
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `JEVC_API_KEY` / `TYPESAFE_API_KEY` | — | TypeSafe API key (required for all features) |
-| `JEVC_PROVIDER` | auto-detected | `typesafe` or `openrouter` |
-| `JEVC_MODEL` | per transport | Jev model slug (e.g. `typesafe/jev-1.13` on OpenRouter) |
-| `JEVC_BASE_URL` | per transport | Endpoint override |
-| `JEVC_DISABLED` | — | `1`/`true` bypasses all hooks |
+| `TYPESAFE_API_KEY` | Unset | TypeSafe authentication |
+| `OPENROUTER_API_KEY` | Unset | OpenRouter authentication |
+| `JEVC_API_KEY` | Unset | Override the selected provider's API key |
+| `JEVC_PROVIDER` | Auto-detected | `typesafe` or `openrouter` |
+| `JEVC_MODEL` | Per transport | Jev model slug |
+| `JEVC_BASE_URL` | Per transport | Jev endpoint URL |
+| `JEVC_DISABLED` | `false` | `1`, `true`, or `yes` bypasses both hooks |
 
-compaction:
+Compaction:
 
-| Variable | Default | Description |
+| Variable | Config key | Default |
 | --- | --- | --- |
-| `JEVC_KEEP_THRESHOLD` | `0.5` | Minimum keep probability for a call or result |
-| `JEVC_BORDERLINE` | `0.1` | Band under the threshold where a confident low-staleness score rescues a result |
-| `JEVC_PRESERVE_RECENT` | `3` | Newest messages in the span never touched |
-| `JEVC_TRUNCATE_HEAD` | `300` | Characters kept when a result is truncated |
-| `JEVC_MIN_REDUCTION` | `0.15` | Below this estimated reduction, fall back to pi's default compaction |
-| `JEVC_MAX_STATE_TOKENS` | `25000` | State ceiling for Jev |
-| `JEVC_MAX_REQUEST_TOKENS` | `30000` | State + one question batch ceiling |
+| `JEVC_KEEP_THRESHOLD` | `compaction.keepThreshold` | `0.5` |
+| `JEVC_BORDERLINE` | `compaction.borderline` | `0.1` |
+| `JEVC_PRESERVE_RECENT` | `compaction.preserveRecentMessages` | `3` |
+| `JEVC_TRUNCATE_HEAD` | `compaction.truncateHeadChars` | `300` |
+| `JEVC_MIN_REDUCTION` | `compaction.minReduction` | `0.15` |
+| `JEVC_MAX_STATE_TOKENS` | `compaction.maxStateTokens` | `25000` |
+| `JEVC_MAX_REQUEST_TOKENS` | `compaction.maxRequestTokens` | `30000` |
 
-routing:
+`keepThreshold` controls verbatim retention, while `borderline` defines the band below it where a staleness answer can rescue a result. `preserveRecentMessages` pins recent converted messages; `truncateHeadChars` limits shortened result heads. `minReduction` is the estimated reduction required to replace pi's summary. The token ceilings bound Jev state and state-plus-questions requests.
 
-| Variable | Default | Description |
+Routing:
+
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `JEVC_ROUTE_CHEAP` | — | `"provider/model-id"` for easy requests (enables routing) |
-| `JEVC_ROUTE_STRONG` | — | `"provider/model-id"` for hard requests (optional) |
+| `JEVC_ROUTE_CHEAP` | Unset | Easy-request model reference |
+| `JEVC_ROUTE_STRONG` | Unset | Hard-request model reference |
+| `JEVC_ROUTE_EASY_MAX` | `0.5` | Maximum difficulty for the cheap target |
+| `JEVC_ROUTE_HARD_MIN` | `1.5` | Minimum difficulty for the strong target |
+| `JEVC_ROUTE_MIN_CONFIDENCE` | `0.6` | Minimum confidence to switch models |
 
-The difficulty thresholds and the confidence gate are internal defaults for now — only the two model targets are user-facing.
+The routing thresholds are advanced overrides supported by the config loader; they are not exposed in the settings menu or CLI key list.
 
-## Reference
+## Troubleshooting
 
-- [src/compaction](src/compaction) — `convert` (messages → Jev state), `decision` (answers → keep/drop), `jev` (client + retries), `summarize` (verbatim transcript), `extension` (the hook).
-- [src/routing](src/routing) — `decide` (pure, no side effects) and `extension` (the hook, safety nets, model switch).
-- [src/commands](src/commands) — the `/jev` command: menu, completions, model picker, CLI bridge.
-- [src/cli](src/cli) — the config CLI engine shared with the slash command.
-- [src/shared/config.ts](src/shared/config.ts) — layered resolution, key metadata, defaults.
-- [src/vendor/fast-jev-compaction](src/vendor/fast-jev-compaction) — vendored MIT client and decision primitives.
-- [test](test) — 89 vitest cases, fully offline through a fake `JevAsker`.
+| Symptom | What to check |
+| --- | --- |
+| `/jev` is unavailable | Enable `extensions/jev.ts` through `pi config`, then `/reload` if needed |
+| Compaction uses pi's normal summary | Check the selected provider's API key, `disabled`, Jev errors, and `minReduction` |
+| Routing never switches models | Set at least one target, verify pi model authentication, and check difficulty/confidence gates |
+| A setting change has no effect | Check environment overrides and project settings, which take priority over global settings |
+| The checkout CLI cannot find `dist/cli/main.js` | Run `npm run build` |
 
 ## Development
 
+Node.js 22 is used in CI. From the repository root:
+
 ```sh
-npm run typecheck   # tsc --noEmit
-npm test            # vitest run — 89 tests, 11 files, no network
-npm run build       # tsc -p tsconfig.build.json → dist/ (the bin needs it)
+npm ci
+npm run typecheck
+npm test
+npm run build
 ```
 
-The suite covers the decision rules (compaction keep/drop/truncate, routing bands), Jev request and response conversion, the layered config and CLI, argument completions, and the menu screens — all against fixtures, so tests never call Jev.
+Tests use fixtures and fake `JevAsker` implementations and do not call the Jev API. They cover compaction decisions and conversion, routing, configuration precedence, the CLI, completions, model picking, and menu screens.
 
-The invariant every feature keeps: **a Jev failure is never fatal** — the hook returns nothing and pi's own behavior proceeds.
+| Path | Responsibility |
+| --- | --- |
+| [src/compaction](src/compaction) | Message conversion, Jev batching, retention rules, transcript rendering, and the compaction hook |
+| [src/routing](src/routing) | Difficulty decisions and model switching |
+| [src/commands](src/commands) | `/jev`, settings menus, completion, and model selection |
+| [src/cli](src/cli) | Shared configuration command engine |
+| [src/shared/config.ts](src/shared/config.ts) | Configuration layers, defaults, and key metadata |
+| [extensions](extensions) | Extension entry points |
+| [src/vendor/fast-jev-compaction](src/vendor/fast-jev-compaction) | Vendored Jev client and compaction primitives |
+| [test](test) | Offline test suite |
 
-Adding a feature: create `src/<feature>/` with an `extension.ts` default-export factory plus pure modules, a thin re-export in `extensions/<feature>.ts`, its config section in `src/shared/config.ts`, and tests in `test/`.
+To add a feature, create `src/<feature>/` with a default-export extension factory and pure helper modules, add a thin entry point in `extensions/`, define configuration in `src/shared/config.ts`, and cover the behavior in `test/`. Jev request failures must allow pi to continue.
 
 ## Acknowledgments
 
-- [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) — the Jev client and decision primitives in `src/vendor/fast-jev-compaction/` are vendored from it (MIT), with the license kept alongside.
-- [@narumitw/pi-tui-kit](https://www.npmjs.com/package/@narumitw/pi-tui-kit) — the same menu framework that powers `pi-statusline` drives the `/jev` editor.
-- [TypeSafe](https://typesafe.ai) for Jev System One, and OpenRouter for hosting it behind the alpha Decisions API.
+- [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction): vendored MIT Jev client and compaction primitives; its license is retained alongside the source.
+- [@narumitw/pi-tui-kit](https://www.npmjs.com/package/@narumitw/pi-tui-kit): the interactive `/jev` settings menu.
+- [TypeSafe](https://typesafe.ai): Jev System One; OpenRouter provides the alternative Decisions API transport.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE).
