@@ -164,9 +164,8 @@ function errorMessage(error: unknown): string {
  * insufficient reduction falls back to pi's default compaction.
  */
 export default function (pi: ExtensionAPI): void {
-  const config = loadConfig();
-
   pi.on('session_start', async (_event, ctx) => {
+    const config = loadConfig();
     if (config.disabled) return;
     ctx.ui.notify(
       config.apiKey
@@ -177,6 +176,8 @@ export default function (pi: ExtensionAPI): void {
   });
 
   pi.on('session_before_compact', async (event, ctx) => {
+    // Loaded per event so `/jev set` applies without a restart.
+    const config = loadConfig();
     if (config.disabled || !config.apiKey) return;
     if (event.signal?.aborted) return;
 

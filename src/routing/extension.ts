@@ -32,9 +32,9 @@ function errorMessage(error: unknown): string {
  * current model. Prompts with images never downgrade to a text-only model.
  */
 export default function (pi: ExtensionAPI): void {
-  const config = loadConfig();
-
   pi.on('before_agent_start', async (event, ctx) => {
+    // Loaded per turn so `/jev set` applies without a restart.
+    const config = loadConfig();
     const routing = config.routing;
     if (config.disabled || !config.apiKey) return;
     if (!routing.cheap && !routing.strong) return;

@@ -6,6 +6,7 @@ A [pi](https://github.com/earendil-works/pi-mono) extension suite powered by [Je
 | --- | --- | --- | --- |
 | **compaction** | Replaces the LLM-summary compaction with selective retention: stale tool outputs dropped/truncated, everything else verbatim | `session_before_compact` | `noul` keep-call, `noul` keep-result, `score` staleness |
 | **routing** | Routes each turn to a cheap or strong model by request difficulty | `before_agent_start` | `score` difficulty (3 levels) + confidence |
+| **/jev command** | Configure the whole suite from inside pi; changes apply without a restart | command | — |
 
 Planned: auto-mode safety gate (`tool_call`), prompt-injection screening (`tool_result`), continuous context trimming (`context`).
 
@@ -15,11 +16,14 @@ Planned: auto-mode safety gate (`tool_call`), prompt-injection screening (`tool_
 pi-jev/                    # one pi package, many extensions
 ├── extensions/            # pi convention dir: one extension per file
 │   ├── compaction.ts        → src/compaction/extension.ts
-│   └── routing.ts           → src/routing/extension.ts
+│   ├── routing.ts           → src/routing/extension.ts
+│   └── jev.ts               → src/commands/extension.ts
 ├── src/
-│   ├── shared/config.ts   # JEVC_* env parsing, shared by all features
+│   ├── shared/config.ts   # layered config (env > project > global), shared by all features
 │   ├── compaction/        # convert / decision / jev / summarize / extension
-│   └── routing/           # decide (pure) / extension (hook)
+│   ├── routing/           # decide (pure) / extension (hook)
+│   ├── commands/          # the /jev command extension
+│   └── cli/               # the pi-jev config CLI
 └── test/                  # vitest, fully offline via a fake JevAsker
 ```
 
@@ -68,9 +72,19 @@ export JEVC_ROUTE_STRONG=zai/glm-5.3   # optional
 
 ## Configuration
 
-Values resolve from layered sources, highest first: **environment variables** > **project file** (`.pi/jev.json`) > **global file** (`~/.pi/agent/jev.json`) > defaults. API keys are environment-only and are never written to files. Changes take effect after pi restarts or `/reload`.
+Values resolve from layered sources, highest first: **environment variables** > **project file** (`.pi/jev.json`) > **global file** (`~/.pi/agent/jev.json`) > defaults. API keys are environment-only and are never written to files.
 
-The bundled CLI manages the files:
+Inside pi, the `/jev` command manages everything — hooks re-read config on every event, so changes apply immediately, no restart needed:
+
+```
+/jev                                                # show resolved values + sources
+/jev set routing.cheap deepseek/deepseek-flash
+/jev set model typesafe/jev-1.13 -l                # -l targets the project file
+/jev get routing.easyMax
+/jev unset routing.strong
+```
+
+From a shell, the bundled CLI manages the same files:
 
 ```sh
 npx pi-jev config                                    # show resolved values + each value's source
