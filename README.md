@@ -74,7 +74,7 @@ export JEVC_ROUTE_STRONG=zai/glm-5.3   # optional
 
 Values resolve from layered sources, highest first: **environment variables** > **project file** (`.pi/jev.json`) > **global file** (`~/.pi/agent/jev.json`) > defaults. API keys are environment-only and are never written to files.
 
-Inside pi, the `/jev` command manages everything — hooks re-read config on every event, so changes apply immediately, no restart needed:
+Inside pi, the `/jev` command manages everything — with full argument autocomplete (actions, keys, enum values), so nothing needs to be memorized. Hooks re-read config on every event, so changes apply immediately, no restart needed:
 
 ```
 /jev                                                # show resolved values + sources
