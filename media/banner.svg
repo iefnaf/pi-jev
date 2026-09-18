@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" width="1000" height="300" role="img" aria-label="pi-jev: one Jev request turns a pi transcript into compaction and routing decisions">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0f1e"/>
+      <stop offset="1" stop-color="#141b36"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="0.5" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style>
+      .t { font-family: ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .panel { fill: #ffffff; fill-opacity: 0.035; stroke: #ffffff; stroke-opacity: 0.12; }
+      .lbl { fill: #93a4c8; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; }
+      .row { fill: #6f81a8; font-size: 14px; }
+      .beam { stroke: url(#accent); stroke-width: 2; fill: none; stroke-linecap: round; }
+      .dot { fill: #22d3ee; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="300" rx="20" fill="url(#bg)"/>
+  <rect x="1" y="1" width="998" height="298" rx="19" fill="none" stroke="#ffffff" stroke-opacity="0.07"/>
+
+  <text x="56" y="96" class="t" font-size="58" font-weight="700" fill="url(#accent)" filter="url(#glow)">pi-jev</text>
+  <text x="58" y="130" class="t" font-size="17" fill="#9fb0d4">Jev-powered compaction &amp; routing for pi — typed judgments where an LLM call would be overkill</text>
+
+  <!-- panels -->
+  <g>
+    <rect class="panel" x="56" y="168" width="236" height="98" rx="12"/>
+    <text x="76" y="194" class="t lbl">pi transcript</text>
+    <text x="76" y="220" class="t row">32 messages</text>
+    <text x="76" y="242" class="t row">15 tool calls · 39,379 chars</text>
+
+    <rect class="panel" x="382" y="168" width="236" height="98" rx="12"/>
+    <text x="402" y="194" class="t lbl">Jev System One</text>
+    <text x="402" y="220" class="t row">1 request · 757 ms</text>
+    <text x="402" y="242" class="t row">652 output tokens</text>
+
+    <rect class="panel" x="708" y="168" width="236" height="98" rx="12"/>
+    <text x="728" y="194" class="t lbl">decisions</text>
+    <text x="728" y="220" class="t row">keep 3 · drop 12</text>
+    <text x="728" y="242" class="t m">cheap ⇄ strong</text>
+  </g>
+
+  <!-- beams -->
+  <path id="b1" class="beam" d="M292 217 H382" stroke-dasharray="2 8"/>
+  <path id="b2" class="beam" d="M618 217 H708" stroke-dasharray="2 8"/>
+  <circle class="dot" r="3.4" filter="url(#glow)">
+    <animateMotion dur="2.6s" repeatCount="indefinite" path="M292 217 H382"/>
+  </circle>
+  <circle class="dot" r="3.4" filter="url(#glow)">
+    <animateMotion dur="2.6s" begin="1.3s" repeatCount="indefinite" path="M618 217 H708"/>
+  </circle>
+  <polygon class="dot" points="382,217 374,212 374,222" opacity="0.85"/>
+  <polygon class="dot" points="708,217 700,212 700,222" opacity="0.85"/>
+</svg>
