@@ -7,7 +7,7 @@ import {
   goalFromMessages,
   type JevAsker,
 } from '../vendor/fast-jev-compaction/index.js';
-import { configFromEnv, type JevCompactionConfig } from '../shared/config.js';
+import { loadConfig, type JevCompactionConfig } from '../shared/config.js';
 import { convertMessages } from './convert.js';
 import { compactWithJev, type JevCompactionStats } from './jev.js';
 import { renderSummary, renderTranscript } from './summarize.js';
@@ -164,7 +164,7 @@ function errorMessage(error: unknown): string {
  * insufficient reduction falls back to pi's default compaction.
  */
 export default function (pi: ExtensionAPI): void {
-  const config = configFromEnv();
+  const config = loadConfig();
 
   pi.on('session_start', async (_event, ctx) => {
     if (config.disabled) return;

@@ -66,7 +66,22 @@ export JEVC_ROUTE_CHEAP=deepseek/deepseek-flash
 export JEVC_ROUTE_STRONG=zai/glm-5.3   # optional
 ```
 
-## Configuration (environment)
+## Configuration
+
+Values resolve from layered sources, highest first: **environment variables** > **project file** (`.pi/jev.json`) > **global file** (`~/.pi/agent/jev.json`) > defaults. API keys are environment-only and are never written to files. Changes take effect after pi restarts or `/reload`.
+
+The bundled CLI manages the files:
+
+```sh
+npx pi-jev config                                    # show resolved values + each value's source
+npx pi-jev config set routing.cheap deepseek/deepseek-flash
+npx pi-jev config set model typesafe/jev-1.13 -l     # -l/--project writes .pi/jev.json
+npx pi-jev config get routing.easyMax
+npx pi-jev config unset routing.cheap
+npx pi-jev config keys                               # list all keys, types, env overrides
+```
+
+### Environment variables
 
 Shared:
 

@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { JevClient, type JevAsker } from '../vendor/fast-jev-compaction/index.js';
-import { configFromEnv, type RoutingConfig } from '../shared/config.js';
+import { loadConfig, type RoutingConfig } from '../shared/config.js';
 import { decideRouting, DIFFICULTY_LEVELS, ROUTING_CONTEXT, routingQuestions, type RoutingDecision } from './decide.js';
 
 /** Asks Jev to rate the request difficulty and maps it to a routing target. */
@@ -32,7 +32,7 @@ function errorMessage(error: unknown): string {
  * current model. Prompts with images never downgrade to a text-only model.
  */
 export default function (pi: ExtensionAPI): void {
-  const config = configFromEnv();
+  const config = loadConfig();
 
   pi.on('before_agent_start', async (event, ctx) => {
     const routing = config.routing;
