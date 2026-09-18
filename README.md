@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧠 pi-jev
+# pi-jev
 
 **Jev-powered extensions for [pi](https://github.com/earendil-works/pi-coding-agent)**
 
