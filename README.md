@@ -95,8 +95,8 @@ routing:
 | --- | --- | --- |
 | `JEVC_ROUTE_CHEAP` | — | `"provider/model-id"` for easy requests (enables routing) |
 | `JEVC_ROUTE_STRONG` | — | `"provider/model-id"` for hard requests (optional) |
-| `JEVC_ROUTE_EASY_MAX` | `1.5` | Difficulty level (0..4) at or below which the cheap model is used |
-| `JEVC_ROUTE_HARD_MIN` | `3.5` | Difficulty level at or above which the strong model is used |
+| `JEVC_ROUTE_EASY_MAX` | `0.5` | Difficulty level (0..2) at or below which the cheap model is used |
+| `JEVC_ROUTE_HARD_MIN` | `1.5` | Difficulty level at or above which the strong model is used |
 | `JEVC_ROUTE_MIN_CONFIDENCE` | `0.6` | Minimum Jev confidence to act |
 
 ## Development
