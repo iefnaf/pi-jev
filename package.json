@@ -12,7 +12,12 @@
     "build": "tsc -p tsconfig.build.json",
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval:l0": "vite-node eval/l0.ts",
+    "eval:l1": "vite-node eval/l1.ts",
+    "eval:l2": "vite-node eval/l2.ts",
+    "eval:audit": "vite-node eval/audit.ts",
+    "eval:vs-pi": "vite-node eval/vs-pi.ts"
   },
   "bin": {
     "pi-jev": "bin/pi-jev.js"

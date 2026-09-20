@@ -2,3 +2,10 @@ node_modules/
 dist/
 .firecrawl/
 .pi/
+
+# eval artifacts derive from private sessions
+eval/.cache/
+eval/out/
+
+# exported agent session transcripts (contain private session content)
+20*-*.txt
