@@ -74,8 +74,9 @@ export interface DecisionOutcome {
   keepCall: number;
   keepResult: number;
   action: CallAction;
-  reason: 'pinned' | 'kept' | 'result_dropped' | 'call_dropped';
-  pinned: boolean;
+  reason: 'boundary' | 'kept' | 'result_dropped' | 'call_dropped';
+  /** The call whose result sits at the span's cut boundary (never a recency pin). */
+  boundary: boolean;
   /** Kept only because of a confident low-staleness score. */
   guarded: boolean;
   /** Answers missing or malformed; kept conservatively. */
@@ -125,53 +126,77 @@ function normalizedStaleness(score: number): number {
 export interface DecideOptions {
   keepThreshold: number;
   borderline: number;
+  /**
+   * The call whose result is the span's final message, i.e. the one pi cut the
+   * transcript right after. It gets a conservative prior: Jev scores it like
+   * any other call, but a `drop_call` outcome keeps the call metadata and a
+   * bounded result head instead, so the retained tail keeps its causal
+   * context without carrying a large result verbatim.
+   */
+  boundary?: boolean;
+}
+
+/**
+ * Id of the call whose result sits in the span's final message — the call pi
+ * cut the transcript right after. Pi's own `keepRecentTokens` tail is the only
+ * recent-context mechanism; this helper only identifies the split-turn seam so
+ * `decideCall` can bound it. Returns `undefined` when the span ends with text
+ * or with a tool call instead of a tool result.
+ */
+export function boundaryCallId(
+  messages: readonly Message[],
+  calls: readonly ToolCall[],
+): string | undefined {
+  const last = messages[messages.length - 1];
+  if (
+    !last ||
+    last.text.trim().length > 0 ||
+    last.toolUses.length > 0 ||
+    (last.toolResults ?? []).length === 0
+  ) {
+    return undefined;
+  }
+  let boundary: ToolCall | undefined;
+  for (const call of calls) {
+    if (call.resultIndex !== messages.length - 1) continue;
+    // On ties (parallel calls answering in one message) the newest call wins.
+    if (!boundary || call.callIndex >= boundary.callIndex) boundary = call;
+  }
+  return boundary?.id;
 }
 
 /**
  * Decides one call from Jev's answers: keep, truncate the result, or drop the
  * call. A result whose keep probability falls just under the threshold is
  * rescued when the staleness score is confidently low. Missing or malformed
- * answers keep the call (conservative).
+ * answers keep the call (conservative). A boundary call is never dropped
+ * outright; see `DecideOptions.boundary`.
  */
 export function decideCall(
-  call: Pick<ToolCall, 'id' | 'tool' | 'pinned'>,
+  call: Pick<ToolCall, 'id' | 'tool'>,
   answers: Record<string, JevAnswer>,
   options: DecideOptions,
 ): DecisionOutcome {
-  if (call.pinned) {
-    return {
-      id: call.id,
-      tool: call.tool,
-      keepCall: 1,
-      keepResult: 1,
-      action: 'keep',
-      reason: 'pinned',
-      pinned: true,
-      guarded: false,
-      missing: false,
-    };
-  }
-
+  const boundary = options.boundary === true;
+  const base = { id: call.id, tool: call.tool, boundary };
   const keepCall = noulOr(answers, `call_${call.id}`);
   const keepResult = noulOr(answers, `result_${call.id}`);
   if (keepCall === undefined || keepResult === undefined) {
     return {
-      id: call.id,
-      tool: call.tool,
+      ...base,
       keepCall: keepCall ?? 1,
       keepResult: keepResult ?? 1,
       action: 'keep',
       reason: 'kept',
-      pinned: false,
       guarded: false,
       missing: true,
     };
   }
 
-  const base = { id: call.id, tool: call.tool, keepCall, keepResult, pinned: false, missing: false };
+  const values = { ...base, keepCall, keepResult, missing: false };
 
   if (keepResult >= options.keepThreshold) {
-    return { ...base, action: 'keep', reason: 'kept', guarded: false };
+    return { ...values, action: 'keep', reason: 'kept', guarded: false };
   }
 
   const staleness = scoreAnswer(answers, `staleness_${call.id}`);
@@ -181,13 +206,16 @@ export function decideCall(
     normalizedStaleness(staleness.score) <= 0.25 &&
     staleness.confidence >= 0.5
   ) {
-    return { ...base, action: 'keep', reason: 'kept', guarded: true };
+    return { ...values, action: 'keep', reason: 'kept', guarded: true };
   }
 
   if (keepCall >= options.keepThreshold) {
-    return { ...base, action: 'drop_result', reason: 'result_dropped', guarded: false };
+    return { ...values, action: 'drop_result', reason: 'result_dropped', guarded: false };
   }
-  return { ...base, action: 'drop_call', reason: 'call_dropped', guarded: false };
+  if (boundary) {
+    return { ...values, action: 'drop_result', reason: 'boundary', guarded: false };
+  }
+  return { ...values, action: 'drop_call', reason: 'call_dropped', guarded: false };
 }
 
 function truncatedResultText(text: string, isError: boolean, headChars: number): string {

@@ -111,13 +111,13 @@ Each command loads one extension explicitly. The project's `.pi/extensions/jev-*
 
 Instead of asking a summarization model to rewrite the conversation, pi-jev asks Jev typed questions about each eligible tool call: whether to keep the call, whether to keep its full result (`noul`), and how stale the result is (`score`). It then renders the retained content as a transcript.
 
-- **Keep:** retain user and assistant text, pinned recent messages, and useful tool calls/results. The previous compaction summary is included as-is.
+- **Keep:** retain user and assistant text and useful tool calls/results. The previous compaction summary is included as-is.
 - **Drop:** remove obsolete tool calls together with their results. The transcript header reports the removal count.
 - **Shorten:** retain a tool call but shorten a long result to its first `truncateHeadChars` characters, followed by an explicit truncation marker. Short results may remain unchanged.
 - **Rescue:** preserve a borderline result if a confident staleness judgment says it is still needed.
 - **Fall back:** let pi generate its normal summary when Jev fails, the request is aborted, the span is empty, or the estimated reduction is below `minReduction`. Missing or malformed per-call answers conservatively retain the affected call.
 
-Requests are batched to fit the configured state and request budgets; a compaction can use multiple Jev requests. Recent-message protection applies to the converted messages within the span pi supplies for compaction.
+Requests are batched to fit the configured state and request budgets; a compaction can use multiple Jev requests. Recency is pi's own job: pi keeps the newest `compaction.keepRecentTokens` tokens out of the span before the hook runs, so every converted message is scored. The one exception is a split turn: when pi cuts inside a turn and the span ends on a tool result, that boundary call is never dropped outright — pi-jev keeps the call metadata and a bounded head of its result, so the retained tail keeps its causal context without carrying a large output verbatim.
 
 **Verbatim applies to retained text, not every original message field:** images become `[image]` placeholders and assistant thinking blocks are omitted during conversion. Tool inputs are serialized into the transcript.
 
@@ -136,7 +136,7 @@ Successful compactions store audit data in the session's `compaction` entry:
     "charsBefore": 39379,
     "charsAfter": 9553,
     "calls": 15,
-    "pinned": 3,
+    "boundary": 1,
     "callsDropped": 12,
     "ms": 757,
     "requests": 1,
@@ -215,7 +215,6 @@ A project `.pi/jev.json` can set the transport and compaction policy:
   "disabled": false,
   "compaction": {
     "keepThreshold": 0.5,
-    "preserveRecentMessages": 3,
     "minReduction": 0.15
   }
 }
@@ -273,13 +272,12 @@ Compaction:
 | --- | --- | --- |
 | `JEVC_KEEP_THRESHOLD` | `compaction.keepThreshold` | `0.5` |
 | `JEVC_BORDERLINE` | `compaction.borderline` | `0.1` |
-| `JEVC_PRESERVE_RECENT` | `compaction.preserveRecentMessages` | `3` |
 | `JEVC_TRUNCATE_HEAD` | `compaction.truncateHeadChars` | `300` |
 | `JEVC_MIN_REDUCTION` | `compaction.minReduction` | `0.15` |
 | `JEVC_MAX_STATE_TOKENS` | `compaction.maxStateTokens` | `25000` |
 | `JEVC_MAX_REQUEST_TOKENS` | `compaction.maxRequestTokens` | `30000` |
 
-`keepThreshold` controls verbatim retention, while `borderline` defines the band below it where a staleness answer can rescue a result. `preserveRecentMessages` pins recent converted messages; `truncateHeadChars` limits shortened result heads. `minReduction` is the estimated reduction required to replace pi's summary. The token ceilings bound Jev state and state-plus-questions requests.
+`keepThreshold` controls verbatim retention, while `borderline` defines the band below it where a staleness answer can rescue a result. `truncateHeadChars` limits shortened result heads. `minReduction` is the estimated reduction required to replace pi's summary. The token ceilings bound Jev state and state-plus-questions requests.
 
 Routing:
 

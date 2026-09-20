@@ -28,7 +28,14 @@ export const OPENROUTER_DECISIONS_URL = 'https://openrouter.ai/api/alpha/decisio
 /** Default Jev model slug on OpenRouter (versioned; override with `JEVC_MODEL`). */
 export const OPENROUTER_JEV_MODEL = 'typesafe/jev-1.13';
 
-/** Compaction feature options (consumed by src/compaction/*). */
+/**
+ * Compaction feature options (consumed by src/compaction/*).
+ *
+ * Recency is not configurable here: pi already keeps the newest
+ * `compaction.keepRecentTokens` tokens out of the span before the hook runs,
+ * so pi-jev scores every converted message. Only the call sitting exactly at
+ * the cut boundary gets a conservative prior (see `boundaryCallId`).
+ */
 export interface JevCompactionConfig {
   /** Transport selected via `JEVC_PROVIDER` or auto-detected from keys. */
   provider: JevProvider;
@@ -42,8 +49,6 @@ export interface JevCompactionConfig {
   keepThreshold: number;
   /** Band under `keepThreshold` where a confident low-staleness score still keeps a result. */
   borderline: number;
-  /** Newest messages within the summarized span that are never touched. */
-  preserveRecentMessages: number;
   /** Characters of a dropped tool result retained before its note. */
   truncateHeadChars: number;
   /** Minimum estimated span reduction, or the feature falls back to default compaction. */
@@ -77,8 +82,6 @@ export interface JevConfig extends JevCompactionConfig {
 const DEFAULTS = {
   keepThreshold: 0.5,
   borderline: 0.1,
-  /** Small: pi already excludes the newest ~20k tokens from the span. */
-  preserveRecentMessages: 3,
   truncateHeadChars: 300,
   minReduction: 0.15,
   maxStateTokens: 25_000,
@@ -142,7 +145,6 @@ export interface JevFileConfig {
   compaction?: {
     keepThreshold?: number;
     borderline?: number;
-    preserveRecentMessages?: number;
     truncateHeadChars?: number;
     minReduction?: number;
     maxStateTokens?: number;
@@ -173,12 +175,37 @@ export const CONFIG_KEYS: readonly ConfigKeyMeta[] = [
   { path: 'routing.strong', type: 'string', env: 'JEVC_ROUTE_STRONG', description: '"provider/model-id" for hard requests (optional)' },
   { path: 'compaction.keepThreshold', type: 'number', env: 'JEVC_KEEP_THRESHOLD', default: DEFAULTS.keepThreshold, description: 'Minimum keep probability for verbatim retention' },
   { path: 'compaction.borderline', type: 'number', env: 'JEVC_BORDERLINE', default: DEFAULTS.borderline, description: 'Band where a confident low-staleness score still keeps a result' },
-  { path: 'compaction.preserveRecentMessages', type: 'number', env: 'JEVC_PRESERVE_RECENT', default: DEFAULTS.preserveRecentMessages, description: 'Newest messages within the summarized span that are never touched' },
   { path: 'compaction.truncateHeadChars', type: 'number', env: 'JEVC_TRUNCATE_HEAD', default: DEFAULTS.truncateHeadChars, description: 'Characters of a dropped tool result retained before its note' },
   { path: 'compaction.minReduction', type: 'number', env: 'JEVC_MIN_REDUCTION', default: DEFAULTS.minReduction, description: 'Minimum estimated span reduction, else default compaction' },
   { path: 'compaction.maxStateTokens', type: 'number', env: 'JEVC_MAX_STATE_TOKENS', default: DEFAULTS.maxStateTokens, description: 'Estimated token ceiling for the Jev state' },
   { path: 'compaction.maxRequestTokens', type: 'number', env: 'JEVC_MAX_REQUEST_TOKENS', default: DEFAULTS.maxRequestTokens, description: 'Estimated ceiling for state plus one batch of questions' },
 ];
+
+/** Whether a config file still carries the removed `preserveRecentMessages` key. */
+function hasLegacyRecency(file: JevFileConfig | undefined): boolean {
+  const compaction = file?.compaction;
+  return !!compaction && typeof compaction === 'object' && 'preserveRecentMessages' in compaction;
+}
+
+/**
+ * Recency pinning left pi-jev: pi already keeps the newest tokens out of the
+ * span, so `preserveRecentMessages` has no effect. Warn when an old
+ * environment variable or config file still sets it, instead of silently
+ * ignoring the value.
+ */
+function warnLegacyRecency(
+  env: Record<string, string | undefined>,
+  files: ReadonlyArray<{ path: string; file: JevFileConfig | undefined }>,
+  warn: (message: string) => void,
+): void {
+  const notice = (source: string): string =>
+    `pi-jev: ignoring ${source} (preserveRecentMessages); pi keeps the recent tail itself ` +
+    '(compaction.keepRecentTokens), so pi-jev scores every tool call in the span';
+  if ((env.JEVC_PRESERVE_RECENT ?? '').trim()) warn(notice('JEVC_PRESERVE_RECENT'));
+  for (const { path, file } of files) {
+    if (hasLegacyRecency(file)) warn(notice(`the setting at ${path}`));
+  }
+}
 
 /** Default config file locations, mirroring pi's own settings layout. */
 export function defaultConfigPaths(): { globalPath: string; projectPath: string } {
@@ -239,10 +266,6 @@ export function configFromEnv(
       || (provider === 'openrouter' ? OPENROUTER_DECISIONS_URL : SYSTEM_ONE_URL),
     keepThreshold: number(env, 'JEVC_KEEP_THRESHOLD', file?.compaction?.keepThreshold ?? DEFAULTS.keepThreshold),
     borderline: number(env, 'JEVC_BORDERLINE', file?.compaction?.borderline ?? DEFAULTS.borderline),
-    preserveRecentMessages: Math.max(
-      0,
-      Math.floor(number(env, 'JEVC_PRESERVE_RECENT', file?.compaction?.preserveRecentMessages ?? DEFAULTS.preserveRecentMessages)),
-    ),
     truncateHeadChars: Math.max(
       0,
       Math.floor(number(env, 'JEVC_TRUNCATE_HEAD', file?.compaction?.truncateHeadChars ?? DEFAULTS.truncateHeadChars)),
@@ -272,9 +295,12 @@ export function loadConfig(
 ): JevConfig {
   const paths = { ...defaultConfigPaths(), ...opts };
   const warn = opts.warn ?? ((message: string) => console.warn(message));
-  const file = mergeConfigFiles(
-    readTolerant(paths.globalPath, 'global', warn),
-    readTolerant(paths.projectPath, 'project', warn),
-  );
-  return configFromEnv(opts.env ?? process.env, file);
+  const env = opts.env ?? process.env;
+  const global = readTolerant(paths.globalPath, 'global', warn);
+  const project = readTolerant(paths.projectPath, 'project', warn);
+  warnLegacyRecency(env, [
+    { path: paths.globalPath, file: global },
+    { path: paths.projectPath, file: project },
+  ], warn);
+  return configFromEnv(env, mergeConfigFiles(global, project));
 }

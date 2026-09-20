@@ -111,13 +111,13 @@ pi -e ./extensions/jev.ts
 
 pi-jev 不让摘要模型改写整个对话，而是针对每个可评估的工具调用，向 Jev 提出类型化问题：是否保留调用、是否保留完整结果（`noul`），以及结果有多过时（`score`）。随后将保留内容渲染为对话记录。
 
-- **保留：** 保留用户和助手文本、受保护的近期消息，以及有用的工具调用和结果。上一轮压缩摘要原样嵌入。
+- **保留：** 保留用户和助手文本，以及有用的工具调用和结果。上一轮压缩摘要原样嵌入。
 - **移除：** 过时的工具调用及其结果一起删除，记录头部会说明移除数量。
 - **缩短：** 保留工具调用，将较长的结果缩短至前 `truncateHeadChars` 个字符，并添加明确的截断标记。较短的结果可能保持不变。
 - **补救：** 如果结果的保留概率接近阈值，且过时程度判断以足够置信度表明它仍有用，则完整保留。
 - **回退：** Jev 出错、请求中止、待压缩片段为空，或估算缩减比例低于 `minReduction` 时，交给 pi 生成原生摘要。单个调用的回答缺失或格式异常时，保守地保留该调用。
 
-请求会根据上下文和请求预算分批，因此一次压缩可能发出多个 Jev 请求。近期消息保护作用于 pi 提供的待压缩片段中经过转换的消息。
+请求会根据上下文和请求预算分批，因此一次压缩可能发出多个 Jev 请求。近期上下文的保留是 pi 自身的职责：钩子运行前，pi 已将最新的 `compaction.keepRecentTokens` 个 token 排除在片段之外，因此 pi-jev 会对转换后的每条消息进行判断。唯一的例外是切分轮次：当 pi 在某一轮中间切开、且片段以工具结果结尾时，边界处的调用不会被整体移除——pi-jev 保留调用元数据及其结果的有限头部，使后续保留的尾部仍有因果上下文，同时不会原样携带大段输出。
 
 **“保留原文”针对保留的文本，并非原始消息的所有字段：** 转换时图片替换为 `[image]` 占位符，助手的思考块会被省略；工具输入会序列化到记录中。
 
@@ -136,7 +136,7 @@ pi-jev 不让摘要模型改写整个对话，而是针对每个可评估的工�
     "charsBefore": 39379,
     "charsAfter": 9553,
     "calls": 15,
-    "pinned": 3,
+    "boundary": 1,
     "callsDropped": 12,
     "ms": 757,
     "requests": 1,
@@ -215,7 +215,6 @@ pi-jev
   "disabled": false,
   "compaction": {
     "keepThreshold": 0.5,
-    "preserveRecentMessages": 3,
     "minReduction": 0.15
   }
 }
@@ -273,13 +272,12 @@ node bin/pi-jev.js config path -l
 | --- | --- | --- |
 | `JEVC_KEEP_THRESHOLD` | `compaction.keepThreshold` | `0.5` |
 | `JEVC_BORDERLINE` | `compaction.borderline` | `0.1` |
-| `JEVC_PRESERVE_RECENT` | `compaction.preserveRecentMessages` | `3` |
 | `JEVC_TRUNCATE_HEAD` | `compaction.truncateHeadChars` | `300` |
 | `JEVC_MIN_REDUCTION` | `compaction.minReduction` | `0.15` |
 | `JEVC_MAX_STATE_TOKENS` | `compaction.maxStateTokens` | `25000` |
 | `JEVC_MAX_REQUEST_TOKENS` | `compaction.maxRequestTokens` | `30000` |
 
-`keepThreshold` 控制原文保留阈值，`borderline` 定义阈值下方可由过时程度判断补救的区间。`preserveRecentMessages` 保护近期转换后的消息；`truncateHeadChars` 限制截断结果保留的头部字符数。`minReduction` 是替代 pi 原生摘要所需的最低估算缩减比例。两个 token 上限分别约束 Jev 上下文，以及上下文加问题的单次请求。
+`keepThreshold` 控制原文保留阈值，`borderline` 定义阈值下方可由过时程度判断补救的区间。`truncateHeadChars` 限制截断结果保留的头部字符数。`minReduction` 是替代 pi 原生摘要所需的最低估算缩减比例。两个 token 上限分别约束 Jev 上下文，以及上下文加问题的单次请求。
 
 模型路由：
 

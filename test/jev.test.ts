@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { JevAnswer, Message, ToolCall } from '../src/vendor/fast-jev-compaction/index.js';
 import { compactWithJev } from '../src/compaction/jev.js';
-import { applyJevDecisions, decideCall, questionsFor } from '../src/compaction/decision.js';
+import { applyJevDecisions, boundaryCallId, decideCall, questionsFor } from '../src/compaction/decision.js';
 import { bigText, fakeAsker, withDefaults } from './helpers.js';
 
 function message(role: Message['role'], text: string, extra: Partial<Message> = {}): Message {
@@ -76,10 +76,78 @@ describe('decideCall', () => {
     expect(outcome.missing).toBe(true);
   });
 
-  it('never drops pinned calls', () => {
-    const outcome = decideCall({ ...base, pinned: true }, answers(0, 0), config);
+  it('bounds the boundary call instead of dropping it', () => {
+    const outcome = decideCall(base, answers(0.2, 0.1), { ...config, boundary: true });
+    expect(outcome.action).toBe('drop_result');
+    expect(outcome.reason).toBe('boundary');
+    expect(outcome.boundary).toBe(true);
+  });
+
+  it('still drops a call that is not at the cut boundary', () => {
+    const outcome = decideCall(base, answers(0.2, 0.1), config);
+    expect(outcome.action).toBe('drop_call');
+    expect(outcome.boundary).toBe(false);
+  });
+
+  it('keeps a boundary result Jev explicitly wants verbatim', () => {
+    const outcome = decideCall(base, answers(0.9, 0.9), { ...config, boundary: true });
     expect(outcome.action).toBe('keep');
-    expect(outcome.pinned).toBe(true);
+    expect(outcome.boundary).toBe(true);
+  });
+});
+
+describe('boundaryCallId', () => {
+  function span(): Message[] {
+    return [
+      message('user', 'task'),
+      call('u1', 'read', { path: 'a' }, ''),
+      message('user', '', { toolResults: [{ tool_use_id: 'u1', text: 'r' }] }),
+    ];
+  }
+  function calls(): ToolCall[] {
+    return [{
+      id: 't1', tool_use_id: 'u1', tool: 'read', input: {},
+      callIndex: 1, resultIndex: 2, resultChars: 1, isError: false, pinned: false,
+    }];
+  }
+
+  it('returns the call whose result is the final message', () => {
+    expect(boundaryCallId(span(), calls())).toBe('t1');
+  });
+
+  it('returns undefined when the span ends with text', () => {
+    expect(boundaryCallId([...span(), message('user', 'next')], calls())).toBeUndefined();
+  });
+
+  it('returns undefined when the final result belongs to no scored call', () => {
+    const messages: Message[] = [
+      message('user', 'task'),
+      message('user', '', { toolResults: [{ tool_use_id: 'u9', text: 'r' }] }),
+    ];
+    expect(boundaryCallId(messages, [])).toBeUndefined();
+  });
+
+  it('picks the newest call when parallel results share the final message', () => {
+    const messages: Message[] = [
+      message('user', 'task'),
+      message('assistant', '', {
+        toolUses: [
+          { tool_use_id: 'u1', tool: 'read', input: {} },
+          { tool_use_id: 'u2', tool: 'read', input: {} },
+        ],
+      }),
+      message('user', '', {
+        toolResults: [
+          { tool_use_id: 'u1', text: 'a' },
+          { tool_use_id: 'u2', text: 'b' },
+        ],
+      }),
+    ];
+    const parallel: ToolCall[] = [
+      { id: 't1', tool_use_id: 'u1', tool: 'read', input: {}, callIndex: 1, resultIndex: 2, resultChars: 1, isError: false, pinned: false },
+      { id: 't2', tool_use_id: 'u2', tool: 'read', input: {}, callIndex: 1, resultIndex: 2, resultChars: 1, isError: false, pinned: false },
+    ];
+    expect(boundaryCallId(messages, parallel)).toBe('t2');
   });
 });
 
@@ -98,8 +166,8 @@ describe('applyJevDecisions', () => {
       { id: 't2', tool_use_id: 'u2', tool: 'grep', input: {}, callIndex: 3, resultIndex: 4, resultChars: 800, isError: false, pinned: false },
     ] as ToolCall[];
     const decisions = [
-      { id: 't1', tool: 'read', keepCall: 0.9, keepResult: 0.1, action: 'drop_result' as const, reason: 'result_dropped' as const, pinned: false, guarded: false, missing: false },
-      { id: 't2', tool: 'grep', keepCall: 0.1, keepResult: 0.1, action: 'drop_call' as const, reason: 'call_dropped' as const, pinned: false, guarded: false, missing: false },
+      { id: 't1', tool: 'read', keepCall: 0.9, keepResult: 0.1, action: 'drop_result' as const, reason: 'result_dropped' as const, boundary: false, guarded: false, missing: false },
+      { id: 't2', tool: 'grep', keepCall: 0.1, keepResult: 0.1, action: 'drop_call' as const, reason: 'call_dropped' as const, boundary: false, guarded: false, missing: false },
     ];
     const kept = applyJevDecisions(messages, decisions, calls, 300);
     const resultText = kept[2].toolResults?.[0]?.text ?? '';
@@ -129,7 +197,7 @@ describe('compactWithJev', () => {
       t3: { keepCall: 0.1, keepResult: 0.1 },
     };
     const asker = fakeAsker(plan);
-    const outcome = await compactWithJev(messages, asker, withDefaults({ preserveRecentMessages: 0 }), 'fix the bug');
+    const outcome = await compactWithJev(messages, asker, withDefaults(), 'fix the bug');
 
     expect(outcome.stats.calls).toBe(3);
     expect(outcome.stats.kept).toBe(1);
@@ -141,6 +209,62 @@ describe('compactWithJev', () => {
     // the state carries the goal
     const state = asker.asks[0].state as { goal: string; history: unknown[] };
     expect(state.goal).toBe('fix the bug');
+  });
+
+  it('bounds a huge result at the cut boundary instead of dropping it', async () => {
+    const messages: Message[] = [
+      message('user', 'Fix the bug'),
+      call('u1', 'read', { path: 'src/a.ts' }, ''),
+      message('user', '', { toolResults: [{ tool_use_id: 'u1', text: bigText(6000) }] }),
+      call('u2', 'web_search', { query: 'chrome api' }, ''),
+      message('user', '', { toolResults: [{ tool_use_id: 'u2', text: bigText(50_000) }] }),
+    ];
+    const asker = fakeAsker({
+      t1: { keepCall: 0.9, keepResult: 0.1 },
+      t2: { keepCall: 0.05, keepResult: 0.05 }, // Jev would drop it entirely
+    });
+    const outcome = await compactWithJev(messages, asker, withDefaults(), 'fix the bug');
+
+    expect(outcome.stats.boundary).toBe(1);
+    expect(outcome.stats.callsDropped).toBe(0);
+    expect(outcome.stats.charsAfter).toBeLessThan(2000);
+    const transcript = outcome.messages
+      .map(m => [m.text, ...m.toolUses.map(t => t.tool), ...(m.toolResults ?? []).map(r => r.text)].join('\n'))
+      .join('\n');
+    expect(transcript).toContain('web_search'); // call metadata survives
+    expect(transcript).toContain('[jev-compaction truncated');
+    expect(transcript).not.toContain('x'.repeat(5000));
+  });
+
+  it('keeps user and assistant text verbatim when calls are dropped', async () => {
+    const messages: Message[] = [
+      message('user', 'Keep this instruction verbatim.'),
+      call('u1', 'read', { path: 'a' }, ''),
+      message('user', '', { toolResults: [{ tool_use_id: 'u1', text: bigText(1000) }] }),
+      message('assistant', 'And this answer.'),
+    ];
+    const outcome = await compactWithJev(
+      messages,
+      fakeAsker({ t1: { keepCall: 0.05, keepResult: 0.05 } }),
+      withDefaults(),
+      'goal',
+    );
+    expect(outcome.messages.map(m => m.text)).toContain('Keep this instruction verbatim.');
+    expect(outcome.messages.map(m => m.text)).toContain('And this answer.');
+  });
+
+  it('keeps calls conservatively when Jev omits answers', async () => {
+    const messages: Message[] = [
+      message('user', 'goal'),
+      call('u1', 'read', { path: 'a' }, ''),
+      message('user', '', { toolResults: [{ tool_use_id: 'u1', text: bigText(1000) }] }),
+      message('user', 'done'),
+    ];
+    const asker = { ask: async () => ({ answers: {} }) };
+    const outcome = await compactWithJev(messages, asker, withDefaults(), 'goal');
+    expect(outcome.stats.missing).toBe(1);
+    expect(outcome.stats.callsDropped).toBe(0);
+    expect(outcome.stats.resultsDropped).toBe(0);
   });
 
   it('splits batches when questions do not fit the request budget', async () => {

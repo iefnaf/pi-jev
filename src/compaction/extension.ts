@@ -216,9 +216,12 @@ export default function (pi: ExtensionAPI): void {
       }
 
       const stats = run.compaction.details.stats;
+      const boundary = stats.boundary > 0
+        ? `, ${stats.boundary} boundary call${stats.boundary === 1 ? '' : 's'} bounded`
+        : '';
       ctx.ui.notify(
-        `jev-compaction: ${stats.calls - stats.pinned} calls scored — kept ${stats.kept - stats.pinned}, ` +
-          `truncated ${stats.resultsDropped}, dropped ${stats.callsDropped} ` +
+        `jev-compaction: ${stats.calls} calls scored — kept ${stats.kept}, ` +
+          `truncated ${stats.resultsDropped}, dropped ${stats.callsDropped}${boundary} ` +
           `(${stats.requests} Jev req, ${(run.reduction * 100).toFixed(0)}% smaller, ${stats.ms} ms)`,
         'info',
       );

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
+  CONFIG_KEYS,
   configFromEnv,
+  loadConfig,
   OPENROUTER_DECISIONS_URL,
   OPENROUTER_JEV_MODEL,
 } from '../src/shared/config.js';
@@ -78,5 +83,45 @@ describe('configFromEnv provider resolution', () => {
     const openrouterDefault = configFromEnv({ OPENROUTER_API_KEY: 'or' });
     expect(openrouterDefault.model).toBe('typesafe/jev-1.13');
     expect(openrouter.baseUrl).toBe(OPENROUTER_DECISIONS_URL);
+  });
+});
+
+describe('recency configuration', () => {
+  it('no longer exposes preserveRecentMessages', () => {
+    expect(CONFIG_KEYS.some((key) => key.path.includes('preserveRecentMessages'))).toBe(false);
+    expect('preserveRecentMessages' in configFromEnv({})).toBe(false);
+  });
+
+  it('warns about and ignores a legacy env override', () => {
+    const warnings: string[] = [];
+    const config = loadConfig({ env: { JEVC_PRESERVE_RECENT: '3' }, warn: (message) => warnings.push(message) });
+    expect('preserveRecentMessages' in config).toBe(false);
+    expect(warnings.some((line) => line.includes('JEVC_PRESERVE_RECENT'))).toBe(true);
+  });
+
+  it('warns about and ignores a legacy file setting', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pi-jev-config-'));
+    try {
+      const globalPath = join(dir, 'global.json');
+      const projectPath = join(dir, 'project.json');
+      writeFileSync(globalPath, JSON.stringify({ compaction: { preserveRecentMessages: 3 } }));
+      const warnings: string[] = [];
+      const config = loadConfig({ env: {}, globalPath, projectPath, warn: (message) => warnings.push(message) });
+      expect('preserveRecentMessages' in config).toBe(false);
+      expect(warnings.some((line) => line.includes('preserveRecentMessages') && line.includes(globalPath))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('stays quiet without a legacy setting', () => {
+    const warnings: string[] = [];
+    loadConfig({
+      env: {},
+      globalPath: join(tmpdir(), 'pi-jev-missing-global.json'),
+      projectPath: join(tmpdir(), 'pi-jev-missing-project.json'),
+      warn: (message) => warnings.push(message),
+    });
+    expect(warnings).toEqual([]);
   });
 });

@@ -1,6 +1,7 @@
 import {
   applyJevDecisions,
   batchCalls,
+  boundaryCallId,
   decideCall,
   questionsFor,
   type DecisionOutcome,
@@ -28,7 +29,8 @@ export interface JevCompactionStats {
   kept: number;
   resultsDropped: number;
   callsDropped: number;
-  pinned: number;
+  /** Calls whose result sits at pi's cut boundary and was bounded, not dropped. */
+  boundary: number;
   /** Borderline results kept because of a confident low-staleness score. */
   guarded: number;
   /** Calls whose answers were missing/malformed; kept conservatively. */
@@ -48,10 +50,16 @@ export interface JevCompactionOutcome {
 }
 
 /**
- * Compacts the converted span with Jev: every non-pinned tool call gets two
- * `noul` questions (keep the call, keep its result verbatim) plus one `score`
- * question (result staleness) whose confident answer can rescue a borderline
- * result. Batches run concurrently; the same fitted state is sent with each.
+ * Compacts the converted span with Jev: every tool call gets two `noul`
+ * questions (keep the call, keep its result verbatim) plus one `score` question
+ * (result staleness) whose confident answer can rescue a borderline result.
+ * Batches run concurrently; the same fitted state is sent with each.
+ *
+ * Recency is pi's job: pi has already kept the newest
+ * `compaction.keepRecentTokens` tokens out of the span, so nothing here is
+ * pinned or excluded for being recent. The one exception is the call at the
+ * cut boundary (`boundaryCallId`): it is scored like the rest, but a Jev
+ * `drop_call` is softened to keeping the call and a bounded result head.
  */
 export async function compactWithJev(
   messages: readonly Message[],
@@ -64,14 +72,15 @@ export async function compactWithJev(
   const resolved = resolveOptions({
     goal: resolvedGoal,
     keepThreshold: config.keepThreshold,
-    preserveRecentMessages: config.preserveRecentMessages,
+    preserveRecentMessages: 0,
     maxStateTokens: config.maxStateTokens,
     maxRequestTokens: config.maxRequestTokens,
     truncateHeadChars: config.truncateHeadChars,
   });
 
   const calls = collectToolCalls(messages, resolved.preserveRecentMessages);
-  const candidates = calls.filter(call => !call.pinned);
+  const boundary = boundaryCallId(messages, calls);
+  const candidates = calls;
 
   const answers: Record<string, JevAnswer> = {};
   let stateTokens = 0;
@@ -102,7 +111,13 @@ export async function compactWithJev(
     }
   }
 
-  const decisions = calls.map(call => decideCall(call, answers, config));
+  const decisions = calls.map(call =>
+    decideCall(call, answers, {
+      keepThreshold: config.keepThreshold,
+      borderline: config.borderline,
+      boundary: call.id === boundary,
+    }),
+  );
   const kept = applyJevDecisions(messages, decisions, calls, resolved.truncateHeadChars);
 
   const count = (predicate: (decision: ReturnType<typeof decideCall>) => boolean): number =>
@@ -117,10 +132,10 @@ export async function compactWithJev(
       charsBefore: messages.reduce((sum, message) => sum + messageChars(message), 0),
       charsAfter: kept.reduce((sum, message) => sum + messageChars(message), 0),
       calls: calls.length,
-      kept: count(decision => decision.action === 'keep' && !decision.pinned),
+      kept: count(decision => decision.action === 'keep'),
       resultsDropped: count(decision => decision.action === 'drop_result'),
       callsDropped: count(decision => decision.action === 'drop_call'),
-      pinned: count(decision => decision.pinned),
+      boundary: count(decision => decision.reason === 'boundary'),
       guarded: count(decision => decision.guarded),
       missing: count(decision => decision.missing),
       stateTokens,
