@@ -159,20 +159,35 @@ function errorMessage(error: unknown): string {
 }
 
 /**
+ * The session-start notice, if any. The missing-key warning always shows
+ * because it asks for action; `quiet` only silences the "active" notice.
+ */
+export function sessionStartNotice(
+  config: Pick<JevCompactionConfig, 'provider' | 'apiKey' | 'disabled' | 'quiet'>,
+): { message: string; type: 'info' | 'warning' } | undefined {
+  if (config.disabled) return undefined;
+  if (!config.apiKey) {
+    return {
+      message: 'jev-compaction: set TYPESAFE_API_KEY or OPENROUTER_API_KEY (or JEVC_API_KEY/JEVC_PROVIDER) to enable; using default compaction',
+      type: 'warning',
+    };
+  }
+  if (config.quiet) return undefined;
+  return {
+    message: `jev-compaction active (Jev via ${config.provider}): stale tool outputs are dropped, not summarized`,
+    type: 'info',
+  };
+}
+
+/**
  * The extension: on `session_before_compact`, replace pi's LLM-generated
  * summary with a Jev-compacted verbatim transcript. Any failure, abort, or
  * insufficient reduction falls back to pi's default compaction.
  */
 export default function (pi: ExtensionAPI): void {
   pi.on('session_start', async (_event, ctx) => {
-    const config = loadConfig();
-    if (config.disabled) return;
-    ctx.ui.notify(
-      config.apiKey
-        ? `jev-compaction active (Jev via ${config.provider}): stale tool outputs are dropped, not summarized`
-        : 'jev-compaction: set TYPESAFE_API_KEY or OPENROUTER_API_KEY (or JEVC_API_KEY/JEVC_PROVIDER) to enable; using default compaction',
-      config.apiKey ? 'info' : 'warning',
-    );
+    const notice = sessionStartNotice(loadConfig());
+    if (notice) ctx.ui.notify(notice.message, notice.type);
   });
 
   pi.on('session_before_compact', async (event, ctx) => {

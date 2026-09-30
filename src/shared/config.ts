@@ -59,6 +59,8 @@ export interface JevCompactionConfig {
   maxRequestTokens: number;
   /** Set via `JEVC_DISABLED` to bypass the hooks entirely (all features). */
   disabled: boolean;
+  /** Set via `JEVC_QUIET` to skip the informational session-start notice. */
+  quiet: boolean;
 }
 
 /** Model-routing feature options (consumed by src/routing/*). */
@@ -135,6 +137,7 @@ export interface JevFileConfig {
   model?: string;
   baseUrl?: string;
   disabled?: boolean;
+  quiet?: boolean;
   routing?: {
     cheap?: string;
     strong?: string;
@@ -171,6 +174,7 @@ export const CONFIG_KEYS: readonly ConfigKeyMeta[] = [
   { path: 'model', type: 'string', env: 'JEVC_MODEL', description: 'Jev model slug (e.g. typesafe/jev-1.13 on OpenRouter)' },
   { path: 'baseUrl', type: 'string', env: 'JEVC_BASE_URL', description: 'Jev endpoint URL' },
   { path: 'disabled', type: 'boolean', env: 'JEVC_DISABLED', default: false, description: 'Bypass all pi-jev hooks' },
+  { path: 'quiet', type: 'boolean', env: 'JEVC_QUIET', default: false, description: 'Skip the session-start "active" notice' },
   { path: 'routing.cheap', type: 'string', env: 'JEVC_ROUTE_CHEAP', description: '"provider/model-id" for easy requests (enables routing)' },
   { path: 'routing.strong', type: 'string', env: 'JEVC_ROUTE_STRONG', description: '"provider/model-id" for hard requests (optional)' },
   { path: 'compaction.keepThreshold', type: 'number', env: 'JEVC_KEEP_THRESHOLD', default: DEFAULTS.keepThreshold, description: 'Minimum keep probability for verbatim retention' },
@@ -274,6 +278,7 @@ export function configFromEnv(
     maxStateTokens: Math.max(1, number(env, 'JEVC_MAX_STATE_TOKENS', file?.compaction?.maxStateTokens ?? DEFAULTS.maxStateTokens)),
     maxRequestTokens: Math.max(1, number(env, 'JEVC_MAX_REQUEST_TOKENS', file?.compaction?.maxRequestTokens ?? DEFAULTS.maxRequestTokens)),
     disabled: layeredFlag(env, 'JEVC_DISABLED', file?.disabled),
+    quiet: layeredFlag(env, 'JEVC_QUIET', file?.quiet),
     routing: {
       cheap: env.JEVC_ROUTE_CHEAP?.trim() || file?.routing?.cheap?.trim() || undefined,
       strong: env.JEVC_ROUTE_STRONG?.trim() || file?.routing?.strong?.trim() || undefined,
