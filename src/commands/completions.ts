@@ -46,6 +46,10 @@ export const VALUE_OPTIONS: Record<string, { label: string; description: string 
     { label: 'true', description: 'bypass all pi-jev hooks' },
     { label: 'false', description: 'enable pi-jev hooks' },
   ],
+  quiet: [
+    { label: 'true', description: 'skip the session-start notice' },
+    { label: 'false', description: 'show the session-start notice' },
+  ],
 };
 
 /**

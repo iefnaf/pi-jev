@@ -72,6 +72,7 @@ pi
 | 移除路由目标 | `/jev unset routing.strong` |
 | 暂时跳过两项功能 | `/jev set disabled true` |
 | 重新启用两项功能 | `/jev set disabled false` |
+| 隐藏会话开始时的提示 | `/jev set quiet true` |
 | 写入项目配置 | 添加 `-l`，例如 `/jev set provider openrouter -l` |
 
 配置**默认写入全局文件**，`disabled` 也不例外；使用 `-l` 可限定到项目。若只想对一次 pi 进程跳过两项功能，使用 `JEVC_DISABLED=1 pi` 启动。
@@ -189,7 +190,7 @@ API Key **仅通过环境变量设置**，不会写入配置文件。钩子在�
 ```text
 pi-jev
 ├─ Toggle scope (global ⇄ project)  切换写入范围
-├─ General        provider · model · baseUrl · disabled
+├─ General        provider · model · baseUrl · disabled · quiet
 ├─ Compaction     压缩阈值和 token 预算
 ├─ Routing        cheap · strong → 模型 → 思考等级
 └─ Show resolved config            查看最终生效配置
@@ -265,6 +266,7 @@ node bin/pi-jev.js config path -l
 | `JEVC_MODEL` | 随接入服务选择 | Jev 模型标识 |
 | `JEVC_BASE_URL` | 随接入服务选择 | Jev 接口地址 |
 | `JEVC_DISABLED` | `false` | `1`、`true` 或 `yes` 跳过两项功能的钩子 |
+| `JEVC_QUIET` | `false` | `1`、`true` 或 `yes` 跳过会话开始时的 “active” 提示 |
 
 上下文压缩：
 

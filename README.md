@@ -72,6 +72,7 @@ Open **Routing**, choose a `cheap` and/or `strong` target from pi's model list, 
 | Remove a routing target | `/jev unset routing.strong` |
 | Temporarily bypass both features | `/jev set disabled true` |
 | Re-enable both features | `/jev set disabled false` |
+| Hide the session-start notice | `/jev set quiet true` |
 | Write a project setting | Append `-l`, e.g. `/jev set provider openrouter -l` |
 
 Settings writes are **global by default**, including `disabled`; use `-l` for project scope. To bypass both features for one pi process, launch it with `JEVC_DISABLED=1 pi`.
@@ -189,7 +190,7 @@ Bare `/jev` opens the settings menu in interactive pi:
 ```text
 pi-jev
 ├─ Toggle scope (global ⇄ project)
-├─ General        provider · model · baseUrl · disabled
+├─ General        provider · model · baseUrl · disabled · quiet
 ├─ Compaction     thresholds and token budgets
 ├─ Routing        cheap · strong → model → thinking level
 └─ Show resolved config
@@ -265,6 +266,7 @@ General:
 | `JEVC_MODEL` | Per transport | Jev model slug |
 | `JEVC_BASE_URL` | Per transport | Jev endpoint URL |
 | `JEVC_DISABLED` | `false` | `1`, `true`, or `yes` bypasses both hooks |
+| `JEVC_QUIET` | `false` | `1`, `true`, or `yes` skips the session-start "active" notice |
 
 Compaction:
 

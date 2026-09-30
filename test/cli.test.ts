@@ -60,6 +60,12 @@ describe('configFromEnv file layer', () => {
     expect(configFromEnv({}, { disabled: true }).disabled).toBe(true);
     expect(configFromEnv({ JEVC_DISABLED: '0' }, { disabled: true }).disabled).toBe(false);
   });
+
+  it('file quiet flag works and env still wins', () => {
+    expect(configFromEnv({}).quiet).toBe(false);
+    expect(configFromEnv({}, { quiet: true }).quiet).toBe(true);
+    expect(configFromEnv({ JEVC_QUIET: '0' }, { quiet: true }).quiet).toBe(false);
+  });
 });
 
 describe('runCli', () => {

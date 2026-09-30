@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runJevCompaction } from '../src/compaction/extension.js';
+import { runJevCompaction, sessionStartNotice } from '../src/compaction/extension.js';
 import { fakeAsker, withDefaults, bigText, spanMessages } from './helpers.js';
 
 const input = {
@@ -82,5 +82,22 @@ describe('runJevCompaction', () => {
     await expect(
       runJevCompaction({ ...input, messagesToSummarize: spanMessages(), turnPrefixMessages: [] }, asker, withDefaults({})),
     ).rejects.toThrow('Jev request failed');
+  });
+});
+
+describe('sessionStartNotice', () => {
+  const base = { provider: 'typesafe' as const, apiKey: 'k', disabled: false, quiet: false };
+
+  it('announces the active transport by default', () => {
+    expect(sessionStartNotice(base)).toMatchObject({ type: 'info', message: expect.stringContaining('via typesafe') });
+  });
+
+  it('quiet silences only the active notice, not the missing-key warning', () => {
+    expect(sessionStartNotice({ ...base, quiet: true })).toBeUndefined();
+    expect(sessionStartNotice({ ...base, quiet: true, apiKey: '' })?.type).toBe('warning');
+  });
+
+  it('disabled shows nothing', () => {
+    expect(sessionStartNotice({ ...base, disabled: true, apiKey: '' })).toBeUndefined();
   });
 });

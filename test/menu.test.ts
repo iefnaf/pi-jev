@@ -46,7 +46,7 @@ describe('jev settings menu', () => {
     const cheap = routing.items?.find((item) => item.id === 'routing.cheap');
     expect(cheap?.currentValue).toContain('deepseek/deepseek-flash');
     const general = screen(paths, 'general');
-    expect(general.items?.map((item) => item.id)).toEqual(['provider', 'model', 'baseUrl', 'disabled']);
+    expect(general.items?.map((item) => item.id)).toEqual(['provider', 'model', 'baseUrl', 'disabled', 'quiet']);
   });
 
   it('main screen reflects routing state and scope', () => {
